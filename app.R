@@ -10,8 +10,7 @@ library(ggplot2)
 library(dplyr)
 library(tidyr)
 
-normalized_data_genelevel_tpm = read.csv(file = "/srv/shiny-server/apps/InVivoRNAseq/normalized_data_genelevel_tpm.csv")
-#normalized_data_genelevel_tpm = read.csv(file = "/Users/kylekovary/Documents/normalized_data_genelevel_tpm.csv")
+normalized_data_genelevel_tpm = read.csv(file = "normalized_data_genelevel_tpm.csv")
 
 # Define UI ----
 ui <- fluidPage(
