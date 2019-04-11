@@ -3,6 +3,11 @@ library(shiny)
 
 shinyUI(
   navbarPage('InVivoRNAseq',
+             tabPanel('Analysis',
+                      fluidPage(
+                        includeHTML("Analysis.html")
+                      )
+             ),
              tabPanel('BAT Plots',
                       sidebarPanel(
                         titlePanel(strong("BAT RNA-seq Plots")),
