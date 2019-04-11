@@ -1,11 +1,11 @@
 library(shiny)
-#source('code/functions.R')
+
 
 shinyUI(
   navbarPage('InVivoRNAseq',
              tabPanel('Analysis',
                       fluidPage(
-                        includeHTML("Analysis.html")
+                        htmlOutput("includeHTML")
                       )
              ),
              tabPanel('BAT Plots',
