@@ -1,11 +1,17 @@
 library(shiny)
+library(httr)
 
+# Read in data
+request <- GET(url="https://stanfordmedicine.box.com/shared/static/fiuukx0xhuupthptm51jo33cv8epo43l.html")
+#dropbox.html <- content(request, as="text")
+writeLines(content(request, as="text"), file('box.html'))
 
 shinyUI(
   navbarPage('InVivoRNAseq',
              tabPanel('BAT Analysis',
                       fluidPage(
-                        htmlOutput("includeHTML")
+                        #htmlOutput("includeHTML")
+                        includeHTML('box.html')
                       )
              ),
              tabPanel('BAT Plots',
