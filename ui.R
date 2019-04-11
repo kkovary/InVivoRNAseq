@@ -3,7 +3,7 @@ library(shiny)
 
 shinyUI(
   navbarPage('InVivoRNAseq',
-             tabPanel('Analysis',
+             tabPanel('BAT Analysis',
                       fluidPage(
                         htmlOutput("includeHTML")
                       )
