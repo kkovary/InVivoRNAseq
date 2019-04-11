@@ -1,18 +1,13 @@
 library(shiny)
 library(tidyverse)
 library(ggpubr)
-library(httr)
 
 # Read in data
-#request <- GET(url="https://stanfordmedicine.box.com/shared/static/fiuukx0xhuupthptm51jo33cv8epo43l.html")
-#dropbox.html <-content(request, as="text")
 
 batTPM = read_csv('data/bat_normalized_data_genelevel_tpm.csv')
 watTPM = read_csv("data/wat_normalized_data_genelevel_tpm.csv")
 
 shinyServer(function(input, output) {
-  
-  #output$includeHTML <- renderText({dropbox.html})
   
 ###### BAT Page Handling ######
   BATdatasetInput <- reactive({
