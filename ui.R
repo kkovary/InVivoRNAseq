@@ -1,7 +1,7 @@
 library(shiny)
 library(httr)
 
-# Read in data
+# Load HTML from Box
 request <- GET(url="https://stanfordmedicine.box.com/shared/static/fiuukx0xhuupthptm51jo33cv8epo43l.html")
 writeLines(content(request, as="text"), file('box.html'))
 
