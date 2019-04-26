@@ -33,14 +33,18 @@ shinyServer(function(input, output) {
                                                      rep(7,4),rep(5,4),rep(6,4),
                                                      rep(4,4),rep(2,4),rep(3,4),
                                                      rep(4,4),rep(2,4),rep(3,4),
-                                                     rep(1,8)))
+                                                     rep(1,8))) %>%
+      unite('Color', c('Treatment','Delivery'), sep = ' ', remove = F)
     
     plotDat$Delivery <- ordered(plotDat$Delivery, levels=c('pellet','injection'))
-    plotDat$Treatment <- ordered(plotDat$Treatment, levels=c('Control','Sham', 'Cort'))
+    #plotDat$Treatment <- ordered(plotDat$Treatment, levels=c('Control','Sham', 'Cort'))
+    plotDat$Color <- ordered(plotDat$Color, levels=c('Control pellet','Control injection',
+                                                     'Sham pellet', 'Sham injection',
+                                                     'Cort pellet', 'Cort injection'))
     
-    mypal = c('#000000', '#f94040', '#0000ff')
+    mypal = c('#000000', '#000000', '#f94040','#099963', '#0000ff','#ad07e3')
     
-    ggbarplot(plotDat, x = "order", y = "FoldChange", add = "mean_sd", fill = "Treatment", color = 'Treatment',
+    ggbarplot(plotDat, x = "order", y = "FoldChange", add = "mean_sd", fill = "Color", color = 'Color',
               palette = mypal, position = position_dodge(0.8), facet.by = 'Delivery') + 
       scale_x_discrete(breaks = 1:7, labels = c('0','3','7','14','3','7','14')) + 
       xlab('Day') + ylab('Fold Change') +
