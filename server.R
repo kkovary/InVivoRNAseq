@@ -23,10 +23,6 @@ shinyServer(function(input, output) {
   
   BATdatasetPlot <- reactive({
     
-    #plotDat = BATdatasetInput() %>% group_by(Treatment, Delivery, Day) %>% 
-    #  summarise(mean = mean(FoldChange, na.rm = T), sd = sd(FoldChange, na.rm = T))
-    #plotDat$Order = c(1,1,5,6,7,5,6,7,2,3,4,2,3,4)
-    
     my_comparisons <- list(c('1', '2'), c('1', '3'), c('1', '4'), c('2','5'), c('3','6'), c('4','7'))
     
     plotDat = BATdatasetInput() %>% mutate(order = c(rep(7,4),rep(5,4),rep(6,4),
@@ -37,7 +33,6 @@ shinyServer(function(input, output) {
       unite('Color', c('Treatment','Delivery'), sep = ' ', remove = F)
     
     plotDat$Delivery <- ordered(plotDat$Delivery, levels=c('pellet','injection'))
-    #plotDat$Treatment <- ordered(plotDat$Treatment, levels=c('Control','Sham', 'Cort'))
     plotDat$Color <- ordered(plotDat$Color, levels=c('Control pellet','Control injection',
                                                      'Sham pellet', 'Sham injection',
                                                      'Cort pellet', 'Cort injection'))
