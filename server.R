@@ -22,9 +22,30 @@ shinyServer(function(input, output) {
   })
   
   BATdatasetPlot <- reactive({
-    ggplot(BATdatasetInput(), aes(y = log2(FoldChange),x = Treatment, fill = Treatment)) + geom_boxplot(alpha = 0.5) +
-      facet_grid(Delivery ~ as.numeric(Day)) + theme_bw() + stat_compare_means(method = "t.test",size = 3) +
-      ylab('Log2 Fold Change TPM') + ggtitle(input$BATgenes)
+    
+    #plotDat = BATdatasetInput() %>% group_by(Treatment, Delivery, Day) %>% 
+    #  summarise(mean = mean(FoldChange, na.rm = T), sd = sd(FoldChange, na.rm = T))
+    #plotDat$Order = c(1,1,5,6,7,5,6,7,2,3,4,2,3,4)
+    
+    my_comparisons <- list(c('1', '2'), c('1', '3'), c('1', '4'), c('2','5'), c('3','6'), c('4','7'))
+    
+    plotDat = BATdatasetInput() %>% mutate(order = c(rep(7,4),rep(5,4),rep(6,4),
+                                                     rep(7,4),rep(5,4),rep(6,4),
+                                                     rep(4,4),rep(2,4),rep(3,4),
+                                                     rep(4,4),rep(2,4),rep(3,4),
+                                                     rep(1,8)))
+    
+    plotDat$Delivery <- ordered(plotDat$Delivery, levels=c('pellet','injection'))
+    plotDat$Treatment <- ordered(plotDat$Treatment, levels=c('Control','Sham', 'Cort'))
+    
+    mypal = c('#000000', '#f94040', '#0000ff')
+    
+    ggbarplot(plotDat, x = "order", y = "FoldChange", add = "mean_sd", fill = "Treatment", color = 'Treatment',
+              palette = mypal, position = position_dodge(0.8), facet.by = 'Delivery') + 
+      scale_x_discrete(breaks = 1:7, labels = c('0','3','7','14','3','7','14')) + 
+      xlab('Day') + ylab('Fold Change') +
+      stat_compare_means( method = "t.test", size = 3, comparisons = my_comparisons)
+    
   })
   
   BATplotDims <- reactive({
