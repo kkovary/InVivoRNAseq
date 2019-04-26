@@ -16,7 +16,7 @@ shinyUI(
              tabPanel('BAT Plots',
                       sidebarPanel(
                         titlePanel(strong("BAT RNA-seq Plots")),
-                        h6(em("Stefan Tholen, Kyle Kovary, Mary N. Teruel")),
+                        h6(em("Stefan Tholen, Kyle M. Kovary, Mary N. Teruel")),
                         
                         textInput("BATgenes", "Input a single gene:", value = "Pparg"),
                         
