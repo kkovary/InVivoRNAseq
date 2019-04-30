@@ -11,11 +11,15 @@ library(tidyverse)
 library(sleuth)
 library(DESeq2)
 library(readxl)
+library(pheatmap)
+library(RColorBrewer)
 ```
 
-## R Markdown
+### Introduction
 
 This is a notebook to document the analysis of the RNA-seq data collected by Stefan from brown adipose tissue in mice that were treated with corticosterone pellet or injections to combare to sham pellet or injections over the course of 14 days. Currently, this is just a placeholder, ventually I plan have the data analysis pipeline with quality control and analysis plots as well as the code used to analyze everything.
+
+### Data Import
 
 ```{r data import, message=FALSE, warning=FALSE}
 sample_list = read_xlsx('/Users/kylekovary/Box Sync/kkovary/R Projects/RNAseq/Stefan RNA-seq BAT analysis/Stefan Tholen_Samples_for_RNAseq_BAT.xlsx')
@@ -30,16 +34,83 @@ s2c = bind_cols(sample_list, path[match(sample_list$mouse, path$mouse),1]) %>%
   dplyr::rename(path = value, sample_name = `Sample Name`, Pellet = Treatment) %>% 
   unite('Treatment',c('Pellet','Delivery'), remove = F)
 
-#samples <- read.table(file.path(dir, "samples.txt"), header = TRUE)
-#summary(so) %>% as.tibble()
+# Retrieve GeneNames
+library(biomaRt)
+tx2gene <- function(){
+  mart <- biomaRt::useMart(biomart = "ensembl", dataset = "mmusculus_gene_ensembl")
+  t2g <- biomaRt::getBM(attributes = c("ensembl_transcript_id", "ensembl_gene_id",
+                                       "external_gene_name","entrezgene"), mart = mart)
+  t2g <- dplyr::rename(t2g, target_id = ensembl_transcript_id,
+                       ens_gene = ensembl_gene_id, ext_gene = external_gene_name)
+  return(t2g)
+}
+t2g <- tx2gene()
+
+so <- sleuth_prep(s2c, target_mapping = t2g, num_cores = max(1L, parallel::detectCores() - 1L))
+
 ```
 
-## Including Plots
+### DEseq2 Model
 
-You can also embed plots, for example:
+```{r message=FALSE, warning=FALSE}
+full_design <- model.matrix(formula(~ s2c$Treatment + s2c$lane + s2c$Replicate, s2c$Day))
 
-```{r pressure, echo=FALSE}
-plot(pressure)
+so <- sleuth_fit(so, full_design, 'full')
+so <- sleuth_fit(so, formula = ~ s2c$lane + s2c$Replicate, fit_name = "reduced")
+so <- sleuth_lrt(so, "reduced", "full")
+
+plot_qq(so, test = 'reduced:full', test_type = 'lrt', sig_level = 0.05)
+
+lrt_results <- sleuth_results(so, 'reduced:full', test_type = 'lrt')
+table(lrt_results[,"qval"] < 0.05)
 ```
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+### Select Differentially Expressed Genes
+
+```{r message=FALSE, warning=FALSE}
+hits = filter(lrt_results, qval < 0.05)
+hits_dat = so$obs_norm_filt %>% dplyr::select(target_id, sample, est_counts) %>% filter(target_id %in% hits$target_id) %>% spread(key = sample, value = est_counts)
+genes = hits_dat$target_id
+genes = hits[match(genes,hits$target_id),'ext_gene']
+hits_dat = as.matrix(hits_dat[,2:ncol(hits_dat)])
+rownames(hits_dat) = genes
+
+zeros = which(hits_dat <= 0, arr.ind = T)
+for(i in 1:nrow(zeros)){
+  hits_dat[zeros[i,1], zeros[i,2]] = 1
+}
+```
+
+### Heatmap of Differentially Expressed Genes
+
+```{r message=FALSE, warning=FALSE}
+hits_dat = t(apply(hits_dat, 1, function(x) x / mean(x)))
+
+annotation = dplyr::select(s2c, Day, Treatment, lane) %>% as.data.frame()
+rownames(annotation) <- s2c$sample
+
+mypal = rev(colorRampPalette(brewer.pal(11, "RdBu"))(n=200))
+
+pheatmap(log2(hits_dat), breaks = seq(-3,3,6/(length(mypal))), 
+         color = mypal, 
+         show_rownames = F,
+         show_colnames = F,
+         annotation_col = annotation,
+         cutree_cols = 3)
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
