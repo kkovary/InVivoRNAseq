@@ -118,7 +118,11 @@ ggplot(pcaSum, aes(x = PC, y = value)) + geom_point() +
 pcaDF = tibble(sample = as.numeric(rownames(pca$x)), PC1 = pca$x[,1], PC2 = pca$x[,2])
 pcaDF = full_join(pcaDF, s2c, by = 'sample') %>% mutate(Day = as.factor(Day))
 
+# 2D PCA between PC1 and PC2
 ggplot(pcaDF, aes(x = PC1, y = PC2, colour = Pellet, size = Day, shape = Delivery)) + geom_point(alpha = 0.5) + theme_bw()
+
+# 1D PCA plots since PC1 explains the majority of the variance
+ggplot(gather(pcaDF,key = PC, value = value, PC1:PC2), aes(x = value, fill = Treatment)) + geom_dotplot(alpha = 0.5, binwidth = 5) + theme_bw() + facet_wrap(~PC, ncol = 1)
 ```
 
 
