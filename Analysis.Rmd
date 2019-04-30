@@ -17,7 +17,7 @@ library(RColorBrewer)
 
 ### Introduction
 
-This is a notebook to document the analysis of the RNA-seq data collected by Stefan from brown adipose tissue in mice that were treated with corticosterone pellet or injections to combare to sham pellet or injections over the course of 14 days. Currently, this is just a placeholder, ventually I plan have the data analysis pipeline with quality control and analysis plots as well as the code used to analyze everything.
+This is a notebook to document the analysis of the RNA-seq data collected by Stefan from brown adipose tissue in mice that were treated with corticosterone pellet or injections to combare to sham pellet or injections over the course of 14 days. This is still in development, eventually I plan have the data analysis pipeline with quality control and analysis plots as well as the code used to analyze everything.
 
 ### Data Import
 
@@ -46,7 +46,7 @@ tx2gene <- function(){
 }
 t2g <- tx2gene()
 
-so <- sleuth_prep(s2c, target_mapping = t2g, num_cores = max(1L, parallel::detectCores() - 1L))
+so <- sleuth_prep(s2c, target_mapping = t2g, num_cores = max(1L, parallel::detectCores() - 1L), extra_bootstrap_summary = TRUE)
 
 ```
 
@@ -86,7 +86,7 @@ for(i in 1:nrow(zeros)){
 ```{r message=FALSE, warning=FALSE}
 hits_dat = t(apply(hits_dat, 1, function(x) x / mean(x)))
 
-annotation = dplyr::select(s2c, Day, Treatment, lane) %>% as.data.frame()
+annotation = dplyr::select(s2c, Day, Treatment) %>% as.data.frame()
 rownames(annotation) <- s2c$sample
 
 mypal = rev(colorRampPalette(brewer.pal(11, "RdBu"))(n=200))
