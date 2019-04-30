@@ -7,14 +7,31 @@ output: html_document
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(sleuth)
+library(DESeq2)
+library(readxl)
 ```
 
 ## R Markdown
 
 This is a notebook to document the analysis of the RNA-seq data collected by Stefan from brown adipose tissue in mice that were treated with corticosterone pellet or injections to combare to sham pellet or injections over the course of 14 days. Currently, this is just a placeholder, ventually I plan have the data analysis pipeline with quality control and analysis plots as well as the code used to analyze everything.
 
-```{r cars}
-summary(cars)
+```{r data import, message=FALSE, warning=FALSE}
+sample_list = read_xlsx('/Users/kylekovary/Box Sync/kkovary/R Projects/RNAseq/Stefan RNA-seq BAT analysis/Stefan Tholen_Samples_for_RNAseq_BAT.xlsx')
+
+# Set up metadata table
+path = list.dirs('/Users/kylekovary/Box Sync/kkovary/R Projects/RNAseq/Stefan RNA-seq BAT analysis/kallisto_output/')[-c(1,2)]
+path = path %>% as.tibble() %>% 
+  separate(col = value, into = c('a','mouse'), sep = 'ST-', remove = F) %>% 
+  dplyr::select(value, mouse)
+
+s2c = bind_cols(sample_list, path[match(sample_list$mouse, path$mouse),1]) %>%
+  dplyr::rename(path = value, sample_name = `Sample Name`, Pellet = Treatment) %>% 
+  unite('Treatment',c('Pellet','Delivery'), remove = F)
+
+#samples <- read.table(file.path(dir, "samples.txt"), header = TRUE)
+#summary(so) %>% as.tibble()
 ```
 
 ## Including Plots

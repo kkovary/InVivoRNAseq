@@ -191,22 +191,28 @@ $(document).ready(function () {
 
 <h1 class="title toc-ignore">BAT RNA-seq Analysis</h1>
 <h4 class="author">Stefan Tholen, Kyle M. Kovary, Mary N. Teruel</h4>
-<h4 class="date">2019-04-25 16:58:01</h4>
+<h4 class="date">2019-04-29 23:32:29</h4>
 
 </div>
 
 
 <div id="r-markdown" class="section level2">
 <h2>R Markdown</h2>
-<p>This is a placeholder for the analysis of Stefan’s RNAseq analysis of brown adipose tissue. Eventually I plan have the data analysis pipeline with quality control and analysis plots as well as the code used to analyze everything.</p>
-<pre class="r"><code>summary(cars)</code></pre>
-<pre><code>##      speed           dist       
-##  Min.   : 4.0   Min.   :  2.00  
-##  1st Qu.:12.0   1st Qu.: 26.00  
-##  Median :15.0   Median : 36.00  
-##  Mean   :15.4   Mean   : 42.98  
-##  3rd Qu.:19.0   3rd Qu.: 56.00  
-##  Max.   :25.0   Max.   :120.00</code></pre>
+<p>This is a notebook to document the analysis of the RNA-seq data collected by Stefan from brown adipose tissue in mice that were treated with corticosterone pellet or injections to combare to sham pellet or injections over the course of 14 days. Currently, this is just a placeholder, ventually I plan have the data analysis pipeline with quality control and analysis plots as well as the code used to analyze everything.</p>
+<pre class="r"><code>sample_list = read_xlsx('/Users/kylekovary/Box Sync/kkovary/R Projects/RNAseq/Stefan RNA-seq BAT analysis/Stefan Tholen_Samples_for_RNAseq_BAT.xlsx')
+
+# Set up metadata table
+path = list.dirs('/Users/kylekovary/Box Sync/kkovary/R Projects/RNAseq/Stefan RNA-seq BAT analysis/kallisto_output/')[-c(1,2)]
+path = path %&gt;% as.tibble() %&gt;% 
+  separate(col = value, into = c('a','mouse'), sep = 'ST-', remove = F) %&gt;% 
+  dplyr::select(value, mouse)
+
+s2c = bind_cols(sample_list, path[match(sample_list$mouse, path$mouse),1]) %&gt;%
+  dplyr::rename(path = value, sample_name = `Sample Name`, Pellet = Treatment) %&gt;% 
+  unite('Treatment',c('Pellet','Delivery'), remove = F)
+
+#samples &lt;- read.table(file.path(dir, &quot;samples.txt&quot;), header = TRUE)
+#summary(so) %&gt;% as.tibble()</code></pre>
 </div>
 <div id="including-plots" class="section level2">
 <h2>Including Plots</h2>
