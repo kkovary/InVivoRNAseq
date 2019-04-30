@@ -1,7 +1,7 @@
 ---
 title: "BAT RNA-seq Analysis"
 author: "Stefan Tholen, Kyle M. Kovary, Mary N. Teruel"
-date: "`r format(Sys.time())`"
+date: "Updated: `r format(Sys.time())`"
 output: html_document
 ---
 
