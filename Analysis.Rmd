@@ -103,7 +103,7 @@ pheatmap(log2(hits_dat), breaks = seq(-3,3,6/(length(mypal))),
 
 ### PCA of Differentially Expressed Genes
 
-```{r}
+```{r message=FALSE, warning=FALSE}
 pca = prcomp(t(hits_dat), center = T, scale. = T)
 
 pcaDF = tibble(sample = as.numeric(rownames(pca$x)), PC1 = pca$x[,1], PC2 = pca$x[,2])
