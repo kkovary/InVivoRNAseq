@@ -118,7 +118,7 @@ These samples are 28, 37, 31, 47, 39, 48, 50, 11, 24.
 
 ```{r message=FALSE, warning=FALSE, echo=TRUE}
 outliers = filter(s2c, sample %in% c(28, 37, 31, 47, 39, 48, 50, 11, 24)) %>% 
-  dplyr::select(sample, Delivery, Pellet, Day, Replicate) %>% 
+  dplyr::select(sample, Pellet, Delivery, Day, Replicate) %>% 
   data.table::setorder(Delivery, Day, Replicate) %>% dplyr::rename(`Sample #` = sample, Condition = Pellet)
 
 knitr::kable(outliers, row.names = F) %>% kable_styling()
