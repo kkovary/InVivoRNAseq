@@ -5,8 +5,12 @@ date: "Updated: `r format(Sys.time())`"
 output: html_document
 ---
 
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+### Introduction
+
+This is a notebook to document the analysis of the RNA-seq data collected by Stefan from brown adipose tissue in mice that were treated with corticosterone pellet or injections to combare to sham pellet or injections over the course of 14 days. This is still in development, eventually I plan have the data analysis pipeline with quality control and analysis plots as well as the code used to analyze everything.
+
+```{r setup, message=FALSE, warning=FALSE}
+knitr::opts_chunk$set(echo = FALSE, message = FALSE,warning = FALSE)
 library(tidyverse)
 library(sleuth)
 library(DESeq2)
@@ -14,10 +18,6 @@ library(readxl)
 library(pheatmap)
 library(RColorBrewer)
 ```
-
-### Introduction
-
-This is a notebook to document the analysis of the RNA-seq data collected by Stefan from brown adipose tissue in mice that were treated with corticosterone pellet or injections to combare to sham pellet or injections over the course of 14 days. This is still in development, eventually I plan have the data analysis pipeline with quality control and analysis plots as well as the code used to analyze everything.
 
 ### Data Import
 
