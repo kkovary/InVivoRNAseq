@@ -71,7 +71,7 @@ so <- sleuth_fit(so, full_design, 'full')
 so <- sleuth_fit(so, formula = ~ s2c$lane + s2c$Replicate, fit_name = "reduced")
 so <- sleuth_lrt(so, "reduced", "full")
 
-plot_qq(so, test = 'reduced:full', test_type = 'lrt', sig_level = 0.05)
+#plot_qq(so, test = 'reduced:full', test_type = 'lrt', sig_level = 0.05)
 
 lrt_results <- sleuth_results(so, 'reduced:full', test_type = 'lrt')
 table(lrt_results[,"qval"] < 0.05)
@@ -157,10 +157,69 @@ ggplot(gather(pcaDF,key = PC, value = value, PC1:PC2), aes(x = value, fill = out
 ```
 
 
+### Enrched genes with and without outliers
 
+In order to see if there is an impact on which genes are significantly differentially expressed with the outliers, we re-ran the DESeq model without them and looked for overlap between the gene sets.
 
+```{r message=FALSE, warning=FALSE}
 
+### MetaData w/o outliers ###
 
+s2c2 = dplyr::filter(s2c, !sample %in% c(28, 37, 31, 47, 39, 48, 50, 11, 24))
+
+### Retrieve GeneNames and import data ###
+library(biomaRt)
+tx2gene <- function(){
+  mart <- biomaRt::useMart(biomart = "ensembl", dataset = "mmusculus_gene_ensembl")
+  t2g <- biomaRt::getBM(attributes = c("ensembl_transcript_id", "ensembl_gene_id",
+                                       "external_gene_name","entrezgene"), mart = mart)
+  t2g <- dplyr::rename(t2g, target_id = ensembl_transcript_id,
+                       ens_gene = ensembl_gene_id, ext_gene = external_gene_name)
+  return(t2g)
+}
+t2g <- tx2gene()
+
+so2 <- sleuth_prep(s2c2, target_mapping = t2g, num_cores = max(1L, parallel::detectCores() - 1L), extra_bootstrap_summary = TRUE)
+
+### DESeq w/o outliers ###
+
+full_design <- model.matrix(formula(~ s2c2$Treatment + s2c2$lane + s2c2$Replicate, s2c2$Day))
+
+so2 <- sleuth_fit(so2, full_design, 'full')
+so2 <- sleuth_fit(so2, formula = ~ s2c2$lane + s2c2$Replicate, fit_name = "reduced")
+so2 <- sleuth_lrt(so2, "reduced", "full")
+
+#plot_qq(so2, test = 'reduced:full', test_type = 'lrt', sig_level = 0.05)
+
+lrt_results2 <- sleuth_results(so2, 'reduced:full', test_type = 'lrt')
+table(lrt_results2[,"qval"] < 0.05)
+
+### Select enriched genes ###
+
+hits2 = filter(lrt_results2, qval < 0.05)
+hits_dat2 = so2$obs_norm_filt %>% dplyr::select(target_id, sample, est_counts) %>% filter(target_id %in% hits2$target_id) %>% spread(key = sample, value = est_counts)
+genes = hits_dat2$target_id
+genes = hits2[match(genes,hits2$target_id),'ext_gene']
+hits_dat2 = as.matrix(hits_dat2[,2:ncol(hits_dat2)])
+rownames(hits_dat2) = genes
+
+zeros = which(hits_dat2 <= 0, arr.ind = T)
+for(i in 1:nrow(zeros)){
+  hits_dat2[zeros[i,1], zeros[i,2]] = 1
+}
+```
+
+### Overlap between the two hit lists
+
+```{r message=FALSE, warning=FALSE}
+hitIntersect = length(base::intersect(rownames(hits_dat),rownames(hits_dat2)))
+uniqueFull = sum(!duplicated(rownames(hits_dat)))
+uniqueRem = sum(!duplicated(rownames(hits_dat2)))
+#uniqueFull = length(setdiff(rownames(hits_dat),rownames(hits_dat2)))
+#uniqueRem = length(setdiff(rownames(hits_dat2),rownames(hits_dat)))
+
+VennDiagram::draw.pairwise.venn(uniqueFull, uniqueRem, hitIntersect, category = c("All Samples", "Outliers Removed"), lty = rep("blank", 2), fill = c("light blue", "pink"), alpha = rep(0.5, 2))
+```
 
 
 

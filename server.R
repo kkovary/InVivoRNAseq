@@ -7,7 +7,7 @@ library(ggpubr)
 batTPM = read_csv('data/bat_normalized_data_genelevel_tpm.csv')
 watTPM = read_csv("data/wat_normalized_data_genelevel_tpm.csv")
 
-shinyServer(function(input, output) {
+shinyServer(function(input, output, session) {
   
 ###### BAT Page Handling ######
   BATdatasetInput <- reactive({

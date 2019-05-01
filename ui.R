@@ -2,11 +2,11 @@ library(shiny)
 
 shinyUI(
   navbarPage('InVivoRNAseq',
+             
              tabPanel('BAT Analysis',
-                      fluidPage(
-                        includeHTML('Analysis.html')
-                      )
+                      includeHTML('Analysis.html')
              ),
+             
              tabPanel('BAT Plots',
                       sidebarPanel(
                         titlePanel(strong("BAT RNA-seq Plots")),
@@ -28,19 +28,20 @@ shinyUI(
                         # Download Data Settings
                         downloadButton("BATdownloadData", "Export table as CSV")
                         
-                        ),
-                          
+                      ),
+                      
                       mainPanel(
                         tabsetPanel(
                           tabPanel("Plots", 
                                    plotOutput("BATplot")
-                                   ),
+                          ),
                           tabPanel("Data Table", 
                                    tableOutput("BATtable")
-                                   )
                           )
                         )
-                      ),
+                      )
+             ),
+             
              tabPanel('WAT Plots',
                       sidebarPanel(
                         titlePanel(strong("WAT RNA-seq Plots")),
@@ -89,5 +90,5 @@ shinyUI(
                         )
                       )
              )
-             )
   )
+)
