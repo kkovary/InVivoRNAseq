@@ -192,7 +192,7 @@ $(document).ready(function () {
 
 <h1 class="title toc-ignore">BAT RNA-seq Analysis</h1>
 <h4 class="author">Stefan Tholen, Kyle M. Kovary, Mary N. Teruel</h4>
-<h4 class="date">Updated: 2019-04-30 19:59:18</h4>
+<h4 class="date">Updated: 2019-04-30 20:14:07</h4>
 
 </div>
 
@@ -292,21 +292,21 @@ pheatmap(log2(hits_dat), breaks = seq(-3,3,6/(length(mypal))),
 <p>There is a group of samples that cluster together for seemingly unknown reasons. We believe that these might be technical outliers. I will highlight these in the PCA plot to see if they are also outliers there. We might consider excluding these.</p>
 <p>These samples are 28, 37, 31, 47, 39, 48, 50, 11, 24.</p>
 <pre class="r"><code>outliers = filter(s2c, sample %in% c(28, 37, 31, 47, 39, 48, 50, 11, 24)) %&gt;% 
-  dplyr::select(sample, Pellet, Delivery, Day, Replicate) %&gt;% 
-  data.table::setorder(Delivery, Day, Replicate)
+  dplyr::select(sample, Delivery, Pellet, Day, Replicate) %&gt;% 
+  data.table::setorder(Delivery, Day, Replicate) %&gt;% dplyr::rename(`Sample #` = sample, Condition = Pellet)
 
 knitr::kable(outliers, row.names = F) %&gt;% kable_styling()</code></pre>
 <table class="table" style="margin-left: auto; margin-right: auto;">
 <thead>
 <tr>
 <th style="text-align:right;">
-sample
-</th>
-<th style="text-align:left;">
-Pellet
+Sample #
 </th>
 <th style="text-align:left;">
 Delivery
+</th>
+<th style="text-align:left;">
+Condition
 </th>
 <th style="text-align:right;">
 Day
@@ -322,10 +322,10 @@ Replicate
 37
 </td>
 <td style="text-align:left;">
-Sham
+injection
 </td>
 <td style="text-align:left;">
-injection
+Sham
 </td>
 <td style="text-align:right;">
 3
@@ -339,10 +339,10 @@ injection
 24
 </td>
 <td style="text-align:left;">
-Sham
+injection
 </td>
 <td style="text-align:left;">
-injection
+Sham
 </td>
 <td style="text-align:right;">
 7
@@ -356,10 +356,10 @@ injection
 11
 </td>
 <td style="text-align:left;">
-Sham
+injection
 </td>
 <td style="text-align:left;">
-injection
+Sham
 </td>
 <td style="text-align:right;">
 14
@@ -373,10 +373,10 @@ injection
 28
 </td>
 <td style="text-align:left;">
-Sham
+injection
 </td>
 <td style="text-align:left;">
-injection
+Sham
 </td>
 <td style="text-align:right;">
 14
@@ -390,10 +390,10 @@ injection
 50
 </td>
 <td style="text-align:left;">
-Sham
+injection
 </td>
 <td style="text-align:left;">
-injection
+Sham
 </td>
 <td style="text-align:right;">
 14
@@ -407,10 +407,10 @@ injection
 31
 </td>
 <td style="text-align:left;">
-Sham
+pellet
 </td>
 <td style="text-align:left;">
-pellet
+Sham
 </td>
 <td style="text-align:right;">
 3
@@ -424,10 +424,10 @@ pellet
 39
 </td>
 <td style="text-align:left;">
-Sham
+pellet
 </td>
 <td style="text-align:left;">
-pellet
+Sham
 </td>
 <td style="text-align:right;">
 3
@@ -441,10 +441,10 @@ pellet
 48
 </td>
 <td style="text-align:left;">
-Sham
+pellet
 </td>
 <td style="text-align:left;">
-pellet
+Sham
 </td>
 <td style="text-align:right;">
 7
@@ -458,10 +458,10 @@ pellet
 47
 </td>
 <td style="text-align:left;">
-Sham
+pellet
 </td>
 <td style="text-align:left;">
-pellet
+Sham
 </td>
 <td style="text-align:right;">
 14
