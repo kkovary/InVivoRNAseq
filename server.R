@@ -1,15 +1,6 @@
-library(shiny)
-library(tidyverse)
-library(ggpubr)
-
-# Read in data
-
-batTPM = read_csv('data/bat_normalized_data_genelevel_tpm.csv')
-watTPM = read_csv("data/wat_normalized_data_genelevel_tpm.csv")
-
 shinyServer(function(input, output, session) {
   
-###### BAT Page Handling ######
+  ###### BAT Page Handling ######
   BATdatasetInput <- reactive({
     plotData = filter(batTPM, GeneName %in% input$BATgenes) %>% mutate(FoldChange = TPM / mean(TPM[Day == 0]))
     plotData = rbind(filter(plotData, Day != 0),
@@ -85,7 +76,7 @@ shinyServer(function(input, output, session) {
   )
   
   
-###### WAT Page Handling ######
+  ###### WAT Page Handling ######
   # Reactive value for selected dataset ----
   WATdatasetInput <- reactive({
     plot_data <- filter(watTPM, GeneName %in% unlist(strsplit(input$WATgenes, " ")))

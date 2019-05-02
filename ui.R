@@ -1,6 +1,3 @@
-library(shiny)
-library(tidyverse)
-
 shinyUI(
   navbarPage('InVivoRNAseq',
              
