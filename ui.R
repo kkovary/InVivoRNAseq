@@ -5,11 +5,11 @@ shinyUI(
   navbarPage('InVivoRNAseq',
              
              tabPanel('Introduction',
-                      includeHTML('Introduction.html')
+                      includeHTML('HTML and Rmd FIles/Introduction.html')
              ),
              navbarMenu("BAT",
                         tabPanel('Analysis',
-                                 includeHTML('Analysis.html')),
+                                 includeHTML('HTML and Rmd FIles/Analysis.html')),
                         tabPanel('Bar Plots',
                                  sidebarPanel(
                                    titlePanel(strong("BAT RNA-seq Plots")),
