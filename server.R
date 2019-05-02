@@ -1,6 +1,5 @@
 library(shiny)
 library(tidyverse)
-library(dplyr)
 library(ggpubr)
 
 # Read in data

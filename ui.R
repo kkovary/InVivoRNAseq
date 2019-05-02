@@ -1,7 +1,7 @@
 library(shiny)
 library(tidyverse)
 
-xml2::read_html('Analysis.html') %>% rvest::html_node('body') %>% xml2::write_html('Analysis2.html')
+#xml2::read_html('Analysis.html') %>% rvest::html_node('body') %>% xml2::write_html('Analysis2.html')
 
 shinyUI(
   navbarPage('InVivoRNAseq',
