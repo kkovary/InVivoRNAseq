@@ -59,7 +59,7 @@ sleuth_save(so, '/Users/kylekovary/Box Sync/kkovary/R Projects/RNAseq/Stefan RNA
 
 ```
 
-### DEseq2 Model
+### DESeq2 Model
 
 ```{r message=FALSE, warning=FALSE}
 
@@ -215,10 +215,19 @@ for(i in 1:nrow(zeros)){
 hitIntersect = length(base::intersect(rownames(hits_dat),rownames(hits_dat2)))
 uniqueFull = sum(!duplicated(rownames(hits_dat)))
 uniqueRem = sum(!duplicated(rownames(hits_dat2)))
-#uniqueFull = length(setdiff(rownames(hits_dat),rownames(hits_dat2)))
-#uniqueRem = length(setdiff(rownames(hits_dat2),rownames(hits_dat)))
 
 VennDiagram::draw.pairwise.venn(uniqueFull, uniqueRem, hitIntersect, category = c("All Samples", "Outliers Removed"), lty = rep("blank", 2), fill = c("light blue", "pink"), alpha = rep(0.5, 2))
+
+#intersect = base::intersect(rownames(hits_dat),rownames(hits_dat2))
+#fullExcl = rownames(hits_dat)[!duplicated(rownames(hits_dat))][!c(rownames(hits_dat)[!duplicated(rownames(hits_dat))] %in% intersect)]
+
+#write_csv(as.tibble(intersect), '/Users/kylekovary/Downloads/intersect.csv')
+#write_csv(as.tibble(fullExcl), '/Users/kylekovary/Downloads/fullExcl.csv')
+
+write_csv(as.tibble(rownames(hits_dat)[!duplicated(rownames(hits_dat))]), '/Users/kylekovary/Downloads/withOutliers.csv')
+write_csv(as.tibble(rownames(hits_dat2)[!duplicated(rownames(hits_dat2))]), '/Users/kylekovary/Downloads/noOutliers.csv')
+write_csv(as.tibble(lrt_results$ext_gene[!duplicated(lrt_results$ext_gene)]), '/Users/kylekovary/Downloads/allGenes.csv')
+
 ```
 
 
