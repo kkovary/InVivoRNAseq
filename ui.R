@@ -1,16 +1,17 @@
 library(shiny)
 library(tidyverse)
 
-#xml2::read_html('Analysis.html') %>% rvest::html_node('body') %>% xml2::write_html('Analysis2.html')
+#xml2::read_html('Analysis.html') %>% rvest::html_node('body') %>% xml2::write_html('Analysis.html')
 
 shinyUI(
   navbarPage('InVivoRNAseq',
              
-             tabPanel('Introduction'),
-             
+             tabPanel('Introduction',
+                      includeHTML('Introduction.html')
+             ),
              navbarMenu("BAT",
                         tabPanel('Analysis',
-                                 includeHTML('Analysis2.html')),
+                                 includeHTML('Analysis.html')),
                         tabPanel('Bar Plots',
                                  sidebarPanel(
                                    titlePanel(strong("BAT RNA-seq Plots")),

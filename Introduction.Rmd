@@ -1,0 +1,20 @@
+---
+title: "Circadian glucocorticoid oscillations are required to maintain functional brown adipose tissue"
+author: "Stefan Tholen, Kyle M. Kovary, Atefeh Rabiee, Wenting Yang, Ewa Bielczyk-Maczyńska, and Mary N. Teruel "
+date: "Updated: `r format(Sys.time())`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+### Introduction
+
+This is a summary of the RNA-seq analysis with interfaces to explore the data collected for the project "Circadian glucocorticoid oscillations are required to maintain functional brown adipose tissue". This is an evolving project so expect the analysis, plot types, and interface to change over time. If anyone has suggestions please contact Kyle Kovary.
+
+
+### Abstract
+
+In healthy mammals glucocorticoids (GCs) are secreted in circadian oscillations. Disruption of this circadian rhythm, as it occurs during chronic stress (Fig. 1) or  glucocorticoid treatment, promotes obesity and the development of obesity-related disorders including cardiovascular disease and diabetes. As a therapeutic treatment for obesity and related disorders expansion of brown adipose tissue (BAT) or boosting its respiratory activity to burn energy gained significant attention (Fig.2). But how BAT is controlled by circadian glucocorticoid oscillations remains elusive and could impact therapeutic strategy. Here we show that flattening of daily corticosterone oscillations in mice results in lipid accumulation in the white and brown fat depots. Lipid accumulation in BAT is characterized by an initial phase of increased lipid uptake, and less energy expenditure. Finally, in a later phase, early lipid uptake results in misbalance of triglyceride synthesis and breakdown leaving the tissue dysfunctional. At this stage mice develop hyperinsulinemia and insulin resistance. 
+
