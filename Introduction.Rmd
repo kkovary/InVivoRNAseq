@@ -11,7 +11,7 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ### Introduction
 
-This is a summary of the RNA-seq analysis with interfaces to explore the data collected for the project "Circadian glucocorticoid oscillations are required to maintain functional brown adipose tissue". This is an evolving project so expect the analysis, plot types, and interface to change over time. If anyone has suggestions please contact Kyle Kovary.
+This is a summary of the RNA-seq analysis with interfaces to explore the data collected for the project "Circadian glucocorticoid oscillations are required to maintain functional brown adipose tissue". This is an evolving project so expect the analysis, plot types, and interface to change over time. If anyone has suggestions please contact Kyle.
 
 
 ### Abstract
