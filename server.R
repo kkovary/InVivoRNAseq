@@ -11,7 +11,7 @@ shinyServer(function(input, output, session) {
   
 ###### BAT Page Handling ######
   BATdatasetInput <- reactive({
-    plotData = dplyr::filter(batTPM, GeneName %in% input$BATgenes) %>% dplyr::mutate(FoldChange = TPM / mean(TPM[Day == 0]))
+    plotData = filter(batTPM, GeneName %in% input$BATgenes) %>% mutate(FoldChange = TPM / mean(TPM[Day == 0]))
     plotData = rbind(filter(plotData, Day != 0),
                      mutate(filter(plotData, Day == 0), Delivery = 'injection'),
                      mutate(filter(plotData, Day == 0), Delivery = 'pellet'))
@@ -25,7 +25,7 @@ shinyServer(function(input, output, session) {
     
     my_comparisons <- list(c('1', '2'), c('1', '3'), c('1', '4'), c('2','5'), c('3','6'), c('4','7'))
     
-    plotDat = BATdatasetInput() %>% dplyr::mutate(order = c(rep(7,4),rep(5,4),rep(6,4),
+    plotDat = BATdatasetInput() %>% mutate(order = c(rep(7,4),rep(5,4),rep(6,4),
                                                      rep(7,4),rep(5,4),rep(6,4),
                                                      rep(4,4),rep(2,4),rep(3,4),
                                                      rep(4,4),rep(2,4),rep(3,4),
