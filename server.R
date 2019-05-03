@@ -75,6 +75,86 @@ shinyServer(function(input, output, session) {
     }
   )
   
+  ######################
+  #### Volcano Plot ####
+  ######################
+  
+  volPlotGroups <- reactive({
+    if(length(input$volGroups) > 0){
+      volConditions = batTPM %>% filter(!duplicated(sample)) %>% select(sample, Treatment, Delivery, Day) %>%
+        unite('Group', input$volGroups, remove = F)
+      
+      volConditions = volConditions$Group %>% unique() %>% as.vector()
+    } else{
+      volConditions = NA
+    }
+    
+  })
+  
+  observe({
+    updateSelectInput(session, 'volNumerator',
+                      choices = volPlotGroups(),
+                      selected = NA)
+    
+    updateSelectInput(session, 'volDenominator',
+                      choices = volPlotGroups(),
+                      selected = NA)
+  })
+  
+  volPlotData <- eventReactive(input$volPlotButton, {
+    dat = batTPM %>% unite('Group', input$volGroups) %>% 
+      filter(Group %in% c(input$volNumerator, input$volDenominator)) %>%
+      group_by(GeneName) %>% summarise(foldChange = mean(TPM[Group == input$volNumerator], na.rm = T) / mean(TPM[Group == input$volDenominator], na.rm = T),
+                                       pvalue = pvalue(TPM[Group == input$volNumerator], TPM[Group == input$volDenominator])) %>% 
+      mutate(padj = p.adjust(pvalue, 'BH'), hit = ifelse(abs(log2(foldChange)) >= log2(input$fcCut) & padj <= input$pvalCut, T, F))
+      
+  })
+  
+  output$volGroupHits <- DT::renderDataTable(DT::datatable({
+    filter(volPlotData(), hit == T)
+  }))
+  
+  
+  output$volGroupHead <- renderPrint(
+    if(class(volPlotData())[1] == 'tbl_df'){
+      volPlotData()[order(volPlotData()$pvalue),] %>% head()
+    } else{
+      'NA'
+    }
+    
+  )
+  
+  output$volPlot <- renderPlot({
+   ggplot(volPlotData(), aes(x = log2(foldChange), y = -log10(padj), colour = hit)) + geom_point(alpha = 0.5) + 
+      geom_vline(xintercept = c(log2(input$fcCut), log2(1/input$fcCut)), colour = 'red', linetype = 'dashed') + 
+      geom_hline(yintercept = -log10(input$pvalCut), colour = 'red', linetype = 'dashed') + theme_bw() + 
+      scale_color_manual(values = c('#bababa','#e08214')) + theme(legend.position="none")
+  })
+  
+  # Download PDF of Volcano Plot
+  output$volDownloadPlot <-downloadHandler(
+    filename = function() {
+      paste(input$volNumerator,' vs ',input$volDenominator, ".pdf", sep = "")
+    },
+    content = function(file){
+      #x = plotDims()
+      renderPlot({
+        volPlot()
+      })
+      ggsave(file, width = input$volWidth, height = input$volHeight, units = c('in'))
+    }
+  )
+  
+  # Downloadable csv Volcano Plot
+  output$volDownloadData <- downloadHandler(
+    filename = function() {
+      paste(input$volNumerator,' vs ',input$volDenominator, ".csv", sep = "")
+    },
+    content = function(file) {
+      write.csv(volPlotData(), file, row.names = FALSE)
+    }
+  )
+  
   
   ###### WAT Page Handling ######
   # Reactive value for selected dataset ----
