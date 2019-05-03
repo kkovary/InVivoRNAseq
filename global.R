@@ -1,12 +1,17 @@
 library(shiny)
 library(tidyverse)
 library(ggpubr)
+library(rvest)
+library(xml2)
+library(DT)
+library(ggrepel)
 
 # Read in data
 
 batTPM = read_csv('data/bat_normalized_data_genelevel_tpm.csv')
-watTPM = read_csv("data/wat_normalized_data_genelevel_tpm.csv")
+watTPM = read_csv('data/wat_normalized_data_genelevel_tpm.csv')
 
+#uniprotHTML('https://www.uniprot.org/uniprot/P12345', 'test.html')
 
 ### Additional functions ###
 
@@ -19,12 +24,17 @@ formatHTML <- function(origFile, newFile){
   require(xml2)
   require(rvest)
   
-  xml2::read_html(origFile) %>% 
-    rvest::html_node('body') %>% 
-    xml2::write_html(newFile)
+  read_html(origFile) %>% 
+    html_node('body') %>% 
+    write_html(newFile)
   
 }
 
+uniprotHTML <- function(uniprot, filename){
+  entireHTML = read_html(paste0('https://www.uniprot.org/uniprot/',uniprot))
+  section = html_nodes(entireHTML, 'body main div')[22]
+  write_html(section, filename)
+}
 
 ###########################
 #### p-value functions ####

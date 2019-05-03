@@ -56,6 +56,10 @@ shinyUI(
                                    selectInput("volDenominator", "Denominator:", choices = c()),
                                    tags$hr(),
                                    tags$p('Select the pvalue and fold change cutoff'),
+                                   radioButtons("pChoice", "Choose p-value",
+                                                choices = c(`FDR Adjusted` = "padj",
+                                                            `Non Adjusted` = "pvalue"),
+                                                selected = "padj", inline = T),
                                    numericInput('pvalCut', 'pvalue Cutoff', value = 0.05, min = 0, max = 1, step = 0.01),
                                    numericInput('fcCut', 'Fold Change Cutoff', value = 1.5, step = 0.25),
                                    actionButton('volPlotButton','Plot'),
@@ -75,8 +79,8 @@ shinyUI(
                                  ),
                                  mainPanel(
                                    plotOutput("volPlot"),
-                                   #verbatimTextOutput("volGroupHead")
-                                   DT::dataTableOutput('volGroupHits')
+                                   DT::dataTableOutput('volGroupHits'),
+                                   verbatimTextOutput("volGroupHead")
                                  )
                         ),
                         tabPanel('Heat Maps')

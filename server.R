@@ -106,29 +106,34 @@ shinyServer(function(input, output, session) {
       filter(Group %in% c(input$volNumerator, input$volDenominator)) %>%
       group_by(GeneName) %>% summarise(foldChange = mean(TPM[Group == input$volNumerator], na.rm = T) / mean(TPM[Group == input$volDenominator], na.rm = T),
                                        pvalue = pvalue(TPM[Group == input$volNumerator], TPM[Group == input$volDenominator])) %>% 
-      mutate(padj = p.adjust(pvalue, 'BH'), hit = ifelse(abs(log2(foldChange)) >= log2(input$fcCut) & padj <= input$pvalCut, T, F))
-      
+      mutate(padj = p.adjust(pvalue, 'BH'), hit = ifelse(abs(log2(foldChange)) >= log2(input$fcCut) & !!rlang::sym(input$pChoice) <= input$pvalCut, T, F))
+    
   })
   
-  output$volGroupHits <- DT::renderDataTable(DT::datatable({
-    filter(volPlotData(), hit == T)
-  }))
-  
-  
-  output$volGroupHead <- renderPrint(
-    if(class(volPlotData())[1] == 'tbl_df'){
-      volPlotData()[order(volPlotData()$pvalue),] %>% head()
-    } else{
-      'NA'
-    }
-    
-  )
-  
-  output$volPlot <- renderPlot({
-   ggplot(volPlotData(), aes(x = log2(foldChange), y = -log10(padj), colour = hit)) + geom_point(alpha = 0.5) + 
+  volPlot <- eventReactive(input$volPlotButton, {
+    ggplot(volPlotData(), aes(x = log2(foldChange), y = -log10(!!rlang::sym(input$pChoice)), colour = hit)) + geom_point(alpha = 0.5) + 
       geom_vline(xintercept = c(log2(input$fcCut), log2(1/input$fcCut)), colour = 'red', linetype = 'dashed') + 
       geom_hline(yintercept = -log10(input$pvalCut), colour = 'red', linetype = 'dashed') + theme_bw() + 
-      scale_color_manual(values = c('#bababa','#e08214')) + theme(legend.position="none")
+      scale_color_manual(values = c('#bababa','#e08214')) + theme(legend.position="none") +
+      geom_text_repel(data = volPlotData()[input$volGroupHits_rows_selected,], aes(label = GeneName), colour = 'black', size = 5)
+  })
+  
+  output$volPlot <- renderPlot({
+    volPlot()
+  })
+  
+  output$volGroupHits <- renderDataTable({
+    datatable(filter(volPlotData(), hit == T), selection = 'single')
+  })
+  
+  
+  output$volGroupHead <- renderPrint({
+    s = input$volGroupHits_rows_selected
+    if (length(s)) {
+      cat('These rows were selected:\n\n')
+      cat(s, sep = ', ')
+    }
+    
   })
   
   # Download PDF of Volcano Plot
