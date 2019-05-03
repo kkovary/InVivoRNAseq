@@ -115,7 +115,8 @@ shinyServer(function(input, output, session) {
       geom_vline(xintercept = c(log2(input$fcCut), log2(1/input$fcCut)), colour = 'red', linetype = 'dashed') + 
       geom_hline(yintercept = -log10(input$pvalCut), colour = 'red', linetype = 'dashed') + theme_bw() + 
       scale_color_manual(values = c('#bababa','#e08214')) + theme(legend.position="none") +
-      geom_text_repel(data = volPlotData()[input$volGroupHits_rows_selected,], aes(label = GeneName), colour = 'black', size = 5)
+      geom_text_repel(data = volPlotData()[input$volGroupHits_rows_selected,], aes(label = GeneName), colour = 'black', size = 5) +
+      xlim(-10,10) + ylim(0,10)
   })
   
   output$volPlot <- renderPlot({
