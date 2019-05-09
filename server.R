@@ -159,6 +159,17 @@ shinyServer(function(input, output, session) {
     }
   })
   
+  observe({
+    s = input$volGroupHits_rows_selected
+    if(length(s)){
+      sGene = filter(volPlotData(), hit == T)[s,]$GeneName
+      updateTextInput(session, "BATgenes", value = sGene)
+    }
+  })
+  
+  output$volBATplot <- renderPlot({
+    BATdatasetPlot()
+  })
   
   # Download PDF of Volcano Plot
   output$volDownloadPlot <-downloadHandler(

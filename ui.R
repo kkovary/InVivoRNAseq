@@ -51,7 +51,7 @@ shinyUI(
                                Next, select your numerator, denominator, and cutoffs for FDR corrected p-values and fold change before clicking Plot."),
                                    checkboxGroupInput("volGroups", 'Grouping Variables',
                                                       c('Treatment' = 'Treatment','Delivery' = 'Delivery', 'Day' = 'Day'),
-                                                      selected = c('Treatment', 'Delivery', 'Day'), inline = TRUE),
+                                                      selected = c('Treatment', 'Delivery'), inline = TRUE),
                                    selectInput("volNumerator", "Numerator:", choices = c()),
                                    selectInput("volDenominator", "Denominator:", choices = c()),
                                    tags$hr(),
@@ -81,7 +81,8 @@ shinyUI(
                                    plotOutput('volPlot', brush = brushOpts('plot_brush')),
                                    tabsetPanel(
                                      tabPanel('Hits Table', DT::dataTableOutput('volGroupHits')),
-                                     tabPanel('UniProt Info', htmlOutput('volPlotUniprot'))
+                                     tabPanel('UniProt Info', htmlOutput('volPlotUniprot')),
+                                     tabPanel("Bar Plot", plotOutput("volBATplot"))
                                      )
                                  )
                         ),
