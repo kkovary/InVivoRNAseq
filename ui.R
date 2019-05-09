@@ -61,7 +61,7 @@ shinyUI(
                                                             `Non Adjusted` = "pvalue"),
                                                 selected = "padj", inline = T),
                                    numericInput('pvalCut', 'pvalue Cutoff', value = 0.05, min = 0, max = 1, step = 0.01),
-                                   numericInput('fcCut', 'Fold Change Cutoff', value = 1.5, step = 0.25),
+                                   numericInput('fcCut', 'Fold Change Cutoff', value = 1.5, step = 0.25, min = 1),
                                    actionButton('volPlotButton','Plot'),
                                    tags$hr(),
                                    tags$p(strong('Download')),
@@ -79,8 +79,10 @@ shinyUI(
                                  ),
                                  mainPanel(
                                    plotOutput("volPlot"),
-                                   DT::dataTableOutput('volGroupHits'),
-                                   verbatimTextOutput("volGroupHead")
+                                   tabsetPanel(
+                                     tabPanel('Hits Table', DT::dataTableOutput('volGroupHits')),
+                                     tabPanel('UniProt Info', htmlOutput('volPlotUniprot'))
+                                     )
                                  )
                         ),
                         tabPanel('Heat Maps')

@@ -106,7 +106,8 @@ shinyServer(function(input, output, session) {
       filter(Group %in% c(input$volNumerator, input$volDenominator)) %>%
       group_by(GeneName) %>% summarise(foldChange = mean(TPM[Group == input$volNumerator], na.rm = T) / mean(TPM[Group == input$volDenominator], na.rm = T),
                                        pvalue = pvalue(TPM[Group == input$volNumerator], TPM[Group == input$volDenominator])) %>% 
-      mutate(padj = p.adjust(pvalue, 'BH'), hit = ifelse(abs(log2(foldChange)) >= log2(input$fcCut) & !!rlang::sym(input$pChoice) <= input$pvalCut, T, F))
+      mutate(padj = p.adjust(pvalue, 'BH'), hit = ifelse(abs(log2(foldChange)) >= log2(input$fcCut) & !!rlang::sym(input$pChoice) <= input$pvalCut, T, F)) %>%
+      select(GeneName, foldChange, padj, everything())
     
   })
   
@@ -115,27 +116,31 @@ shinyServer(function(input, output, session) {
       geom_vline(xintercept = c(log2(input$fcCut), log2(1/input$fcCut)), colour = 'red', linetype = 'dashed') + 
       geom_hline(yintercept = -log10(input$pvalCut), colour = 'red', linetype = 'dashed') + theme_bw() + 
       scale_color_manual(values = c('#bababa','#e08214')) + theme(legend.position="none") +
-      geom_text_repel(data = volPlotData()[input$volGroupHits_rows_selected,], aes(label = GeneName), colour = 'black', size = 5) +
       xlim(-10,10) + ylim(0,10)
   })
   
   output$volPlot <- renderPlot({
-    volPlot()
+    volPlot() + geom_point(data = filter(volPlotData(), hit == T)[input$volGroupHits_rows_selected,], 
+                           aes(x = log2(foldChange), y = -log10(!!rlang::sym(input$pChoice))), 
+                           colour = 'black', size = 5) 
   })
   
   output$volGroupHits <- renderDataTable({
     datatable(filter(volPlotData(), hit == T), selection = 'single')
   })
   
-  
-  output$volGroupHead <- renderPrint({
+  output$volPlotUniprot <- renderUI({
     s = input$volGroupHits_rows_selected
     if (length(s)) {
-      cat('These rows were selected:\n\n')
-      cat(s, sep = ', ')
+      
+      sGene = filter(volPlotData(), hit == T)[s,]$GeneName
+      uniProt = filter(uniprotData, GeneName == sGene)$UniProt
+      
+      entireHTML = read_html(paste0('https://www.uniprot.org/uniprot/', uniProt))
+      html_nodes(entireHTML, 'body main div')[22] %>% as.character() %>% HTML()
     }
-    
   })
+  
   
   # Download PDF of Volcano Plot
   output$volDownloadPlot <-downloadHandler(
