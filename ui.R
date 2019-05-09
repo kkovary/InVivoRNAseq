@@ -78,7 +78,7 @@ shinyUI(
                                    
                                  ),
                                  mainPanel(
-                                   plotOutput("volPlot"),
+                                   plotOutput('volPlot', brush = brushOpts('plot_brush')),
                                    tabsetPanel(
                                      tabPanel('Hits Table', DT::dataTableOutput('volGroupHits')),
                                      tabPanel('UniProt Info', htmlOutput('volPlotUniprot'))

@@ -101,27 +101,45 @@ shinyServer(function(input, output, session) {
                       selected = NA)
   })
   
-  volPlotData <- eventReactive(input$volPlotButton, {
-    dat = batTPM %>% unite('Group', input$volGroups) %>% 
-      filter(Group %in% c(input$volNumerator, input$volDenominator)) %>%
-      group_by(GeneName) %>% summarise(foldChange = mean(TPM[Group == input$volNumerator], na.rm = T) / mean(TPM[Group == input$volDenominator], na.rm = T),
-                                       pvalue = pvalue(TPM[Group == input$volNumerator], TPM[Group == input$volDenominator])) %>% 
-      mutate(padj = p.adjust(pvalue, 'BH'), hit = ifelse(abs(log2(foldChange)) >= log2(input$fcCut) & !!rlang::sym(input$pChoice) <= input$pvalCut, T, F)) %>%
-      select(GeneName, foldChange, padj, everything())
+  volGroups <- eventReactive(input$volPlotButton, {input$volGroups})
+  volNumerator <- eventReactive(input$volPlotButton, {input$volNumerator})
+  volDenominator <- eventReactive(input$volPlotButton, {input$volDenominator})
+  fcCut <- eventReactive(input$volPlotButton, {input$fcCut})
+  pvalCut <- eventReactive(input$volPlotButton, {input$pvalCut})
+  pChoice <- eventReactive(input$volPlotButton, {input$pChoice})
+  
+  volPlotData <- reactive({
     
+    dat = batTPM %>% unite('Group', volGroups()) %>% 
+      filter(Group %in% c(volNumerator(), volDenominator())) %>%
+      group_by(GeneName) %>% 
+      summarise(foldChange = mean(TPM[Group == volNumerator()], na.rm = T) / mean(TPM[Group == volDenominator()], na.rm = T),
+                pvalue = pvalue(TPM[Group == volNumerator()], TPM[Group == volDenominator()])) %>% 
+      mutate(padj = p.adjust(pvalue, 'BH'))
+    
+    if(is.null(input$plot_brush)){
+      dat = dat %>% mutate(hit = ifelse(abs(log2(foldChange)) >= log2(fcCut()) & !!rlang::sym(pChoice()) <= pvalCut(), T, F)) %>%
+    select(GeneName, foldChange, padj, everything())
+    } else{
+      dat = dat %>% mutate(hit = ifelse(foldChange >= 2^input$plot_brush$xmin &
+                                          foldChange <= 2^input$plot_brush$xmax &
+                                          !!rlang::sym(pChoice()) <= 10^-input$plot_brush$ymin &
+                                          !!rlang::sym(pChoice()) >= 10^-input$plot_brush$ymax, T, F)) %>%
+        select(GeneName, foldChange, padj, everything())
+    }
   })
   
-  volPlot <- eventReactive(input$volPlotButton, {
-    ggplot(volPlotData(), aes(x = log2(foldChange), y = -log10(!!rlang::sym(input$pChoice)), colour = hit)) + geom_point(alpha = 0.5) + 
-      geom_vline(xintercept = c(log2(input$fcCut), log2(1/input$fcCut)), colour = 'red', linetype = 'dashed') + 
-      geom_hline(yintercept = -log10(input$pvalCut), colour = 'red', linetype = 'dashed') + theme_bw() + 
+  volPlot <- reactive({
+    ggplot(volPlotData(), aes(x = log2(foldChange), y = -log10(!!rlang::sym(pChoice())), colour = hit)) + geom_point(alpha = 0.5) + 
+      geom_vline(xintercept = c(log2(fcCut()), log2(1/fcCut())), colour = 'red', linetype = 'dashed') + 
+      geom_hline(yintercept = -log10(pvalCut()), colour = 'red', linetype = 'dashed') + theme_bw() + 
       scale_color_manual(values = c('#bababa','#e08214')) + theme(legend.position="none") +
       xlim(-10,10) + ylim(0,10)
   })
   
   output$volPlot <- renderPlot({
     volPlot() + geom_point(data = filter(volPlotData(), hit == T)[input$volGroupHits_rows_selected,], 
-                           aes(x = log2(foldChange), y = -log10(!!rlang::sym(input$pChoice))), 
+                           aes(x = log2(foldChange), y = -log10(!!rlang::sym(pChoice()))), 
                            colour = 'black', size = 5) 
   })
   
@@ -145,7 +163,7 @@ shinyServer(function(input, output, session) {
   # Download PDF of Volcano Plot
   output$volDownloadPlot <-downloadHandler(
     filename = function() {
-      paste(input$volNumerator,' vs ',input$volDenominator, ".pdf", sep = "")
+      paste(volNumerator(),' vs ',volDenominator(), ".pdf", sep = "")
     },
     content = function(file){
       #x = plotDims()
@@ -159,7 +177,7 @@ shinyServer(function(input, output, session) {
   # Downloadable csv Volcano Plot
   output$volDownloadData <- downloadHandler(
     filename = function() {
-      paste(input$volNumerator,' vs ',input$volDenominator, ".csv", sep = "")
+      paste(volNumerator(),' vs ',volDenominator(), ".csv", sep = "")
     },
     content = function(file) {
       write.csv(volPlotData(), file, row.names = FALSE)
