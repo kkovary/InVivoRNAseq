@@ -107,9 +107,9 @@ shinyServer(function(input, output, session) {
   fcCut <- eventReactive(input$volPlotButton, {input$fcCut})
   pvalCut <- eventReactive(input$volPlotButton, {input$pvalCut})
   pChoice <- eventReactive(input$volPlotButton, {input$pChoice})
-  
-  volPlotData <- reactive({
+
     
+  volPlotData <- reactive({
     dat = batTPM %>% unite('Group', volGroups()) %>% 
       filter(Group %in% c(volNumerator(), volDenominator())) %>%
       group_by(GeneName) %>% 

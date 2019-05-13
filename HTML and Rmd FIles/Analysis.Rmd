@@ -18,6 +18,7 @@ library(readxl)
 library(pheatmap)
 library(RColorBrewer)
 library(kableExtra)
+library(eulerr)
 ```
 
 ### Metadata Import
@@ -269,52 +270,11 @@ volPellet = tpm %>% filter(Delivery == 'pellet') %>% group_by(GeneName) %>%
 a = cbind(volDay3$hit, volDay7$hit, volDay14$hit, volPellet$hit)
 colnames(a) = c('Day3','Day7','Day14','AllFDR')
 
-limma::vennDiagram(limma::vennCounts(a[,c(1,2)]), circle.col = c('blue','red','purple','green'))
-limma::vennDiagram(limma::vennCounts(a[,c(1,3)]), circle.col = c('blue','red','purple','green'))
-limma::vennDiagram(limma::vennCounts(a[,c(1,4)]), circle.col = c('blue','red','purple','green'))
-limma::vennDiagram(limma::vennCounts(a[,c(2,3)]), circle.col = c('blue','red','purple','green'))
-limma::vennDiagram(limma::vennCounts(a[,c(2,4)]), circle.col = c('blue','red','purple','green'))
-limma::vennDiagram(limma::vennCounts(a[,c(3,4)]), circle.col = c('blue','red','purple','green'))
+plot(euler(a, shape = "ellipse"), quantities = TRUE)
 
-limma::vennDiagram(limma::vennCounts(a), circle.col = c('blue','red','purple','green'))
 nHits = tibble(name = c('Day3','Day7','Day14','AllFDR'), 
                nHits = c(sum(a[,1]),sum(a[,2]),sum(a[,3]),sum(a[,4])))
 ggplot(nHits, aes(x = name, y = nHits, fill = name)) + geom_bar(stat = 'identity') + theme_bw()
-
-test = calculate.overlap(
-  x = list(
-    X = filter(volDay3, hit ==T),
-    Y = filter(volDay7, hit ==T)
-  )
-)
-venn.diagram(
-   x = list(
-    all = filter(volPellet, hit ==T)$GeneName,
-    d3 = filter(volDay3, hit ==T)$GeneName
-  ),
-  filename = '3vsAll'
-)
-# venn.diagram(
-# 	x = list(
-# 		X = letters[1:10],
-# 		Y = letters[5:20]
-# 		#Z = letters[1:15]
-# 		),
-# 	filename = 'Venn',
-# 	lwd = 4,
-# 	#fill = c("cornflowerblue", "darkorchid1"),
-# 	alpha = 0.75,
-# 	#label.col = "white",
-# 	cex = 4,
-# 	fontfamily = "serif",
-# 	fontface = "bold",
-# 	#cat.col = c("cornflowerblue", "darkorchid1"),
-# 	cat.cex = 3,
-# 	cat.fontfamily = "serif",
-# 	cat.fontface = "bold"
-# 	#cat.dist = c(0.03, 0.03),
-# 	#cat.pos = c(-20, 14)
-# 	)
 ```
 
 

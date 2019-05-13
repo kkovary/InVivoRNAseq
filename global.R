@@ -12,6 +12,7 @@ batTPM = read_csv('data/bat_normalized_data_genelevel_tpm.csv')
 watTPM = read_csv('data/wat_normalized_data_genelevel_tpm.csv')
 uniprotData = read_csv('data/UniprotData.csv')
 
+
 #uniprotHTML('https://www.uniprot.org/uniprot/P12345', 'test.html')
 
 ### Additional functions ###
