@@ -277,4 +277,72 @@ nHits = tibble(name = c('Day3','Day7','Day14','AllFDR'),
 ggplot(nHits, aes(x = name, y = nHits, fill = name)) + geom_bar(stat = 'identity') + theme_bw()
 ```
 
+### GO Term Analysis
+
+```{r message=FALSE, warning=FALSE}
+library(AnnotationHub)
+library(AnnotationDbi)
+library(clusterProfiler)
+library(org.Mm.eg.db)
+
+tpmFC = tpm %>% filter(Delivery == 'pellet') %>% group_by(GeneName) %>% 
+  summarise(FC = mean(TPM[Treatment == 'Cort'], na.rm = T) / mean(TPM[Treatment == 'Sham'], na.rm = T),
+            pval = t.test(TPM[Treatment == 'Cort'], TPM[Treatment == 'Sham'], na.rm = T)$p.value) %>%
+  mutate(pval = p.adjust(pval, 'BH'),
+         hit = ifelse(abs(log2(FC)) >= log2(1.5) &  pval <= 0.05, T, F))
+
+zScore <- function(x, subsetFC){
+  genes <-  x %>% strsplit('/') %>% unlist()
+  convert  <-  filter(universe, ENTREZID %in% genes)$SYMBOL
+  convert <- convert[!duplicated(convert)]
+  
+  FC <-  filter(subsetFC, GeneName %in% convert)$FC
+  return((sum(FC >= 1.5) - sum(FC <= (1/1.5))) / sqrt(length(FC)))
+}
+
+allEnrichGO <- function(data){
+  goTypes = c('MF','BP','CC')
+  
+  gene.df <- bitr(filter(data, hit == T)$GeneName, fromType = 'SYMBOL', toType = 'ENTREZID', OrgDb = org.Mm.eg.db)
+  universe <- bitr(data$GeneName, fromType = 'SYMBOL', toType = 'ENTREZID', OrgDb = org.Mm.eg.db)
+  rm()
+  for(i in 1:length(goTypes)){
+    if(i == 1){
+       goDF = enrichGO(gene = gene.df$ENTREZID, universe = universe$ENTREZID, ont = goTypes[i], OrgDb = org.Mm.eg.db)
+       goDF = goDF %>% as.tibble() %>% mutate('Category' = goTypes[i])
+    } else{
+      temp = enrichGO(gene = gene.df$ENTREZID, universe = universe$ENTREZID, ont = goTypes[i], OrgDb = org.Mm.eg.db)
+      temp = temp %>% as.tibble() %>% mutate('Category' = goTypes[i])
+      goDF = rbind(goDF, temp)
+    }
+  }
+  goDF = goDF %>% rowwise() %>% dplyr::mutate(zscore = zScore(geneID, data))
+}
+
+gene.df <- bitr(filter(tpmFC, hit == T)$GeneName, fromType = 'SYMBOL', toType = 'ENTREZID', OrgDb = org.Mm.eg.db)
+universe <- bitr(tpmFC$GeneName, fromType = 'SYMBOL', toType = 'ENTREZID', OrgDb = org.Mm.eg.db)
+
+ego <- enrichGO(gene          = gene.df$ENTREZID,
+                universe      = universe$ENTREZID,
+                ont           = 'MF',
+                OrgDb         = org.Mm.eg.db)
+
+dotplot(ego, showCategory=30)
+
+test = allEnrichGO(tpmFC)
+
+ggplot(test, aes(x = zscore, y = -log10(p.adjust), size = Count, colour = Category)) + geom_point(alpha = 0.15) + theme_bw() + facet_wrap(~Category)
+
+  
+```
+
+
+
+
+
+
+
+
+
+
 
