@@ -37,7 +37,8 @@ goTermsUI <- tabPanel('GO Term Analysis',
                    mainPanel(
                      plotOutput('goPlot', brush = brushOpts('goPlot_brush')),
                      tabsetPanel(
-                       tabPanel('GO Terms Table', DT::dataTableOutput('goTermTable'))
+                       tabPanel('GO Terms Table', DT::dataTableOutput('goTermTable')),
+                       tabPanel('Gene List', DT::dataTableOutput('goTermGenes'))
                      )
                    )
 )

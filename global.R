@@ -71,3 +71,13 @@ pvalue <- function(x, y){
   2*pt(t_test(x,y), deg_free(x,y))
   
 }
+
+
+zScore <- function(x, subsetFC){
+  genes <-  x %>% strsplit('/') %>% unlist()
+  convert  <-  filter(universe, ENTREZID %in% genes)$SYMBOL
+  convert <- convert[!duplicated(convert)]
+  
+  FC <-  filter(subsetFC, GeneName %in% convert)$FC
+  return((sum(FC >= 1.5) - sum(FC <= (1/1.5))) / sqrt(length(FC)))
+}

@@ -301,22 +301,15 @@ zScore <- function(x, subsetFC){
 }
 
 allEnrichGO <- function(data){
-  goTypes = c('MF','BP','CC')
   
   gene.df <- bitr(filter(data, hit == T)$GeneName, fromType = 'SYMBOL', toType = 'ENTREZID', OrgDb = org.Mm.eg.db)
   universe <- bitr(data$GeneName, fromType = 'SYMBOL', toType = 'ENTREZID', OrgDb = org.Mm.eg.db)
-  rm()
-  for(i in 1:length(goTypes)){
-    if(i == 1){
-       goDF = enrichGO(gene = gene.df$ENTREZID, universe = universe$ENTREZID, ont = goTypes[i], OrgDb = org.Mm.eg.db)
-       goDF = goDF %>% as.tibble() %>% mutate('Category' = goTypes[i])
-    } else{
-      temp = enrichGO(gene = gene.df$ENTREZID, universe = universe$ENTREZID, ont = goTypes[i], OrgDb = org.Mm.eg.db)
-      temp = temp %>% as.tibble() %>% mutate('Category' = goTypes[i])
-      goDF = rbind(goDF, temp)
-    }
-  }
-  goDF = goDF %>% rowwise() %>% dplyr::mutate(zscore = zScore(geneID, data))
+  
+  
+  goDF = enrichGO(gene = gene.df$ENTREZID, universe = universe$ENTREZID, ont = 'ALL', OrgDb = org.Mm.eg.db)
+  #goDF = goDF %>% as.tibble() %>% mutate('Category' = goTypes[i])
+  
+  goDF = goDF %>% as.tibble() %>% rowwise() %>% dplyr::mutate(zscore = zScore(geneID, data))
 }
 
 gene.df <- bitr(filter(tpmFC, hit == T)$GeneName, fromType = 'SYMBOL', toType = 'ENTREZID', OrgDb = org.Mm.eg.db)
@@ -331,7 +324,7 @@ dotplot(ego, showCategory=30)
 
 test = allEnrichGO(tpmFC)
 
-ggplot(test, aes(x = zscore, y = -log10(p.adjust), size = Count, colour = Category)) + geom_point(alpha = 0.15) + theme_bw() + facet_wrap(~Category)
+ggplot(test, aes(x = zscore, y = -log10(p.adjust), size = Count, colour = ONTOLOGY)) + geom_point(alpha = 0.15) + theme_bw() + facet_wrap(~ONTOLOGY)
 
   
 ```
