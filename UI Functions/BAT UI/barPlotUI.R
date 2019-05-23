@@ -1,4 +1,4 @@
-barPlot <- tabPanel('Bar Plots',
+barPlotUI <- tabPanel('Bar Plots',
                        sidebarPanel(
                          titlePanel(strong("BAT RNA-seq Plots")),
                          h6(em("Stefan Tholen, Kyle M. Kovary, Mary N. Teruel")),

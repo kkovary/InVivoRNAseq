@@ -1,4 +1,4 @@
-volcano <- tabPanel('Volcano Plots',
+volcanoUI <- tabPanel('Volcano Plots',
                     sidebarPanel(
                       tags$p(strong('Please be patient,'), em('it may take a minute to display the plot.')),
                       tags$hr(),

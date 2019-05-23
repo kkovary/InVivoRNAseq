@@ -1,7 +1,3 @@
-######################
-#### Volcano Plot ####
-######################
-
 volPlotGroups <- reactive({
   if(length(input$volGroups) > 0){
     volConditions = batTPM %>% filter(!duplicated(sample)) %>% dplyr::select(sample, Treatment, Delivery, Day) %>%

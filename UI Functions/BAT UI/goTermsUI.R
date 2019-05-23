@@ -1,4 +1,4 @@
-goTerm <- tabPanel('GO Term Analysis',
+goTermsUI <- tabPanel('GO Term Analysis',
                    sidebarPanel(
                      tags$p(strong('Please be patient,'), em('it may take a minute to display the plot.')),
                      tags$hr(),
@@ -35,11 +35,9 @@ goTerm <- tabPanel('GO Term Analysis',
                      
                    ),
                    mainPanel(
-                     plotOutput('goPlot', brush = brushOpts('plot_brush')),
+                     plotOutput('goPlot', brush = brushOpts('goPlot_brush')),
                      tabsetPanel(
-                       tabPanel('Hits Table', DT::dataTableOutput('goGroupHits')),
-                       tabPanel('UniProt Info', htmlOutput('goPlotUniprot')),
-                       tabPanel("Bar Plot", plotOutput("goBATplot"))
+                       tabPanel('GO Terms Table', DT::dataTableOutput('goTermTable'))
                      )
                    )
 )
