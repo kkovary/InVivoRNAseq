@@ -1,11 +1,12 @@
 library(shiny)
-library(tidyverse)
 library(ggpubr)
 library(rvest)
 library(xml2)
 library(DT)
 library(ggrepel)
-
+library(clusterProfiler)
+library(org.Mm.eg.db)
+library(tidyverse)
 # Read in data
 
 batTPM = read_csv('data/bat_normalized_data_genelevel_tpm.csv')
@@ -73,11 +74,11 @@ pvalue <- function(x, y){
 }
 
 
-zScore <- function(x, subsetFC){
+zScore <- function(x, subsetFC, universe){
   genes <-  x %>% strsplit('/') %>% unlist()
-  convert  <-  filter(universe, ENTREZID %in% genes)$SYMBOL
+  convert  <-  dplyr::filter(universe, ENTREZID %in% genes)$SYMBOL
   convert <- convert[!duplicated(convert)]
   
-  FC <-  filter(subsetFC, GeneName %in% convert)$FC
+  FC <-  dplyr::filter(subsetFC, GeneName %in% convert)$FC
   return((sum(FC >= 1.5) - sum(FC <= (1/1.5))) / sqrt(length(FC)))
 }

@@ -1,0 +1,13 @@
+name: InVivoRNAseq
+title: InVivoRNAseq
+username:
+account: kylekovary
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 946506
+bundleId: 2105720
+url: https://kylekovary.shinyapps.io/InVivoRNAseq/
+when: 1558682433.00177
+asMultiple: FALSE
+asStatic: FALSE
+ignoredFiles: .RData
