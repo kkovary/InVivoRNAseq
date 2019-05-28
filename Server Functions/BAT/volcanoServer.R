@@ -59,7 +59,7 @@ volPlot <- reactive({
 output$volPlot <- renderPlot({
   volPlot() + geom_point(data = filter(volPlotData(), hit == T)[input$volGroupHits_rows_selected,], 
                          aes(x = log2(foldChange), y = -log10(!!rlang::sym(pChoice()))), 
-                         colour = 'black', size = 5) 
+                         colour = 'black', size = 5)
 })
 
 output$volGroupHits <- renderDataTable({

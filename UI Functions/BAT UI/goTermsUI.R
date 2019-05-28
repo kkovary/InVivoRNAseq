@@ -28,17 +28,20 @@ goTermsUI <- tabPanel('GO Term Analysis',
                        numericInput("goHeight", "Height (in)", value = 5)
                      ),
                      
-                     downloadButton("goDownloadPlot", "Export plot as PDF"),
-                     
-                     # Download Data Settings
-                     downloadButton("goDownloadData", "Export table as CSV")
+                     downloadButton("goDownloadPlot", "Export plot as PDF")
                      
                    ),
                    mainPanel(
-                     plotOutput('goPlot', brush = brushOpts('goPlot_brush')),
+                     tabsetPanel(
+                       tabPanel('GO Term Plots', plotOutput('goPlot', brush = brushOpts('goPlot_brush'))),
+                       tabPanel('Heat Map', d3heatmapOutput('goHeat', width = "100%", height = "600px"))
+                     ),
+                     
                      tabsetPanel(
                        tabPanel('GO Terms Table', DT::dataTableOutput('goTermTable')),
-                       tabPanel('Gene List', DT::dataTableOutput('goTermGenes'))
+                       tabPanel('Gene List', DT::dataTableOutput('goTermGenesTable')),
+                       tabPanel('Uniprot Info', htmlOutput('goPlotUniprot')),
+                       tabPanel("Bar Plot", plotOutput("goBATplot"))
                      )
                    )
 )

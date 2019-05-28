@@ -5,9 +5,9 @@ account: kylekovary
 server: shinyapps.io
 hostUrl: https://api.shinyapps.io/v1
 appId: 946506
-bundleId: 2105720
+bundleId: 2107351
 url: https://kylekovary.shinyapps.io/InVivoRNAseq/
-when: 1558682433.00177
+when: 1558737324.02556
 asMultiple: FALSE
 asStatic: FALSE
 ignoredFiles: .RData

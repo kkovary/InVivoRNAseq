@@ -7,6 +7,8 @@ library(ggrepel)
 library(clusterProfiler)
 library(org.Mm.eg.db)
 library(tidyverse)
+library(d3heatmap)
+
 # Read in data
 
 batTPM = read_csv('data/bat_normalized_data_genelevel_tpm.csv')
