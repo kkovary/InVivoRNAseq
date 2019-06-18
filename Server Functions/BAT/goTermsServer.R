@@ -52,11 +52,21 @@ goFC <- reactive({
 })
 
 goPlotData <- reactive({
-  gene.df <- clusterProfiler::bitr(dplyr::filter(goFC(), hit == T)$GeneName, fromType = 'SYMBOL', toType = 'ENTREZID', OrgDb = org.Mm.eg.db)
-  universe <- clusterProfiler::bitr(goFC()$GeneName, fromType = 'SYMBOL', toType = 'ENTREZID', OrgDb = org.Mm.eg.db)
-  
-  goDF <- clusterProfiler::enrichGO(gene = gene.df$ENTREZID, universe = universe$ENTREZID, ont = 'ALL', OrgDb = org.Mm.eg.db)
-  goDF <- goDF %>% tibble::as_tibble() %>% dplyr::rowwise() %>% dplyr::mutate(zscore = zScore(geneID, goFC(), universe))
+  withProgress(message = 'Calculating GO Enrichment', value = 0, {
+    gene.df <- clusterProfiler::bitr(dplyr::filter(goFC(), hit == T)$GeneName, fromType = 'SYMBOL', toType = 'ENTREZID', OrgDb = org.Mm.eg.db)
+    incProgress(0.25, detail = "Please be patient")
+    
+    universe <- clusterProfiler::bitr(goFC()$GeneName, fromType = 'SYMBOL', toType = 'ENTREZID', OrgDb = org.Mm.eg.db)
+    incProgress(0.25, detail = "Please be patient")
+    
+    goDF <- clusterProfiler::enrichGO(gene = gene.df$ENTREZID, universe = universe$ENTREZID, ont = 'ALL', OrgDb = org.Mm.eg.db)
+    incProgress(0.25, detail = "Please be patient")
+    
+    goDF <- goDF %>% tibble::as_tibble() %>% dplyr::rowwise() %>% dplyr::mutate(zscore = zScore(geneID, goFC(), universe))
+    incProgress(0.25, detail = "Done")
+    
+    goDF
+  })
 })
 
 goPlot <- reactive({
@@ -169,13 +179,35 @@ goHeatData <- reactive({
   mat <- t(log2(apply(mat, 1, function(x) x / mean(x, na.rm = T))))
   mat[which(is.na(mat))] = 0
   mat[which(is.infinite(mat))] = 0
+  mat[which(mat > 3)] = 3
+  mat[which(mat < -3)] = -3
   mat
 })
 
-output$goHeat <- renderD3heatmap({
-  d3heatmap(goHeatData())
-  #pheatmap(goHeatData(), cluster_cols = F, cluster_rows = F)
+# interactive heatmap prep
+interactiveHeatmap <- reactive({
+  heatmaply(goHeatData(), limits = c(-3,3), colors = rev(colorRampPalette(brewer.pal(11, 'RdBu'))(201)))
 })
+
+# interactive heatmap output
+output$interactive <- renderPlotly({
+  if(!is.null(goHeatData()))
+    withProgress(message = 'Making interactive heatmap:', value = 0, {
+      genexp <- goHeatData()
+      genexp_df <- as.data.frame(genexp)
+      names_genexp_df <- genexp_df[,1]
+      n <- NROW(names_genexp_df)
+      for (i in 1:n) {
+        incProgress(1/n, detail = "Please wait...")
+      }
+      interactiveHeatmap()
+    })	
+})
+
+# output$goHeat <- renderD3heatmap({
+#   d3heatmap(goHeatData())
+#   #pheatmap(goHeatData(), cluster_cols = F, cluster_rows = F)
+# })
 
 # Download PDF of Volcano Plot
 output$goDownloadPlot <-downloadHandler(

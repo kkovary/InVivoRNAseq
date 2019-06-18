@@ -34,7 +34,8 @@ goTermsUI <- tabPanel('GO Term Analysis',
                    mainPanel(
                      tabsetPanel(
                        tabPanel('GO Term Plots', plotOutput('goPlot', brush = brushOpts('goPlot_brush'))),
-                       tabPanel('Heat Map', d3heatmapOutput('goHeat', width = "100%", height = "600px"))
+                       #tabPanel('Heat Map', d3heatmapOutput('goHeat', width = "100%", height = "600px"))
+                       tabPanel("Interactive Heatmap", plotlyOutput("interactive", height = "700px"))
                      ),
                      
                      tabsetPanel(

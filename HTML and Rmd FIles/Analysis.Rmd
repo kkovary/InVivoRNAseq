@@ -99,7 +99,7 @@ for(i in 1:nrow(zeros)){
 ```{r message=FALSE, warning=FALSE}
 hits_dat = t(apply(hits_dat, 1, function(x) x / mean(x)))
 
-annotation = dplyr::select(s2c, Day, Treatment) %>% as.data.frame()
+annotation = dplyr::select(s2c, Day, Treatment) %>% mutate(Day = as.factor(Day)) %>% as.data.frame()
 rownames(annotation) <- s2c$sample
 
 mypal = rev(colorRampPalette(brewer.pal(11, "RdBu"))(n=200))
@@ -107,9 +107,10 @@ mypal = rev(colorRampPalette(brewer.pal(11, "RdBu"))(n=200))
 pheatmap(log2(hits_dat), breaks = seq(-3,3,6/(length(mypal))), 
          color = mypal, 
          show_rownames = F,
-         show_colnames = T,
+         show_colnames = F,
          annotation_col = annotation,
-         cutree_cols = 3)
+         cutree_cols = 2,
+         clustering_distance_cols = 'correlation')
 
 ```
 
