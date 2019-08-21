@@ -39,7 +39,7 @@ watVolcanoUI <- tabPanel('Volcano Plots',
                         tabsetPanel(
                           tabPanel('Hits Table', DT::dataTableOutput('WATvolGroupHits')),
                           tabPanel('UniProt Info', htmlOutput('WATvolPlotUniprot')),
-                          tabPanel("Bar Plot", plotOutput("WATvolPlot"))
+                          tabPanel("Bar Plot", plotOutput("volWATbarPlot"))
                         )
                       )
 )

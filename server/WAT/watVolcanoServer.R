@@ -86,7 +86,7 @@ observe({
   }
 })
 
-output$volWATplot <- renderPlot({
+output$volWATbarPlot <- renderPlot({
   WATdatasetPlot()
 })
 
