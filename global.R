@@ -7,7 +7,6 @@ library(ggrepel)
 library(clusterProfiler)
 library(org.Mm.eg.db)
 library(tidyverse)
-library(d3heatmap)
 library(heatmaply)
 library(RColorBrewer)
 

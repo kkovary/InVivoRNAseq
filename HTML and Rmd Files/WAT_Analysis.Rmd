@@ -1,0 +1,336 @@
+---
+title: "WAT RNA-seq Analysis"
+author: "Stefan Tholen, Kyle M. Kovary, Mary N. Teruel"
+date: "Updated: `r format(Sys.time())`"
+output: html_document
+---
+
+### Introduction
+
+This is a notebook to document the analysis of the RNA-seq data collected by Stefan from white adipose tissue in mice that were treated with corticosterone pellet or injections to compare to sham pellet or injections over the course of 14 days. This is still in development, eventually I plan have the data analysis pipeline with quality control and analysis plots as well as the code used to analyze everything.
+
+```{r setup, message=FALSE, warning=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
+library(tidyverse)
+library(sleuth)
+library(DESeq2)
+library(readxl)
+library(pheatmap)
+library(RColorBrewer)
+library(kableExtra)
+library(eulerr)
+```
+
+### Metadata Import
+
+```{r metadata table, message=FALSE, warning=FALSE}
+sample_list = read_xlsx('/Users/kylekovary/Box Sync/kkovary/R Projects/RNAseq/Stefan RNA-seq WAT analysis/Stefan Tholen_Samples_for_RNAseq_WAT.xlsx')
+
+# Set up metadata table
+path = list.dirs('/Users/kylekovary/Box Sync/kkovary/R Projects/RNAseq/Stefan RNA-seq WAT analysis/kallisto_output')[-c(1,2)]
+path = path %>% as_tibble() %>% 
+  separate(col = value, into = c('a','mouse'), sep = 'ST', remove = F) %>% dplyr::select(value, mouse) %>%
+  separate(col = mouse, into = c('b','mouse'), sep = '-', remove = T) %>% dplyr::select(value, mouse)
+
+s2c = bind_cols(sample_list, path[match(sample_list$mouse, path$mouse),1]) %>%
+  dplyr::rename(path = value, sample_name = `Sample Name`, Pellet = Treatment) %>% 
+  unite('Treatment',c('Pellet','Delivery'), remove = F)
+
+```
+
+### Data Import
+
+```{r import gene names, eval=TRUE, message=FALSE, warning=FALSE}
+
+# Retrieve GeneNames
+library(biomaRt)
+tx2gene <- function(){
+  mart <- biomaRt::useMart(biomart = "ensembl", dataset = "mmusculus_gene_ensembl")
+  t2g <- biomaRt::getBM(attributes = c("ensembl_transcript_id", "ensembl_gene_id",
+                                       "external_gene_name","entrezgene_id"), mart = mart)
+  t2g <- dplyr::rename(t2g, target_id = ensembl_transcript_id,
+                       ens_gene = ensembl_gene_id, ext_gene = external_gene_name)
+  return(t2g)
+}
+t2g <- tx2gene()
+```
+
+```{r data import, eval=FALSE, message=FALSE, warning=FALSE}
+
+so <- sleuth_prep(s2c, target_mapping = t2g, num_cores = max(1L, parallel::detectCores() - 1L), extra_bootstrap_summary = TRUE)
+
+sleuth_save(so, '/Users/kylekovary/Box Sync/kkovary/R Projects/RNAseq/Stefan RNA-seq WAT analysis/so')
+
+```
+
+
+### DESeq2 Model
+
+```{r message=FALSE, warning=FALSE}
+
+so <- sleuth_load('/Users/kylekovary/Box Sync/kkovary/R Projects/RNAseq/Stefan RNA-seq WAT analysis/so')
+
+full_design <- model.matrix(formula(~ s2c$Treatment + s2c$lane + s2c$Replicate, s2c$Day))
+
+so <- sleuth_fit(so, full_design, 'full')
+so <- sleuth_fit(so, formula = ~ s2c$lane + s2c$Replicate, fit_name = "reduced")
+so <- sleuth_lrt(so, "reduced", "full")
+
+#plot_qq(so, test = 'reduced:full', test_type = 'lrt', sig_level = 0.05)
+
+lrt_results <- sleuth_results(so, 'reduced:full', test_type = 'lrt')
+table(lrt_results[,"qval"] < 0.05)
+```
+
+### Select Differentially Expressed Genes
+
+```{r message=FALSE, warning=FALSE}
+hits = filter(lrt_results, qval < 0.05)
+hits_dat = so$obs_norm_filt %>% dplyr::select(target_id, sample, est_counts) %>% filter(target_id %in% hits$target_id) %>% spread(key = sample, value = est_counts)
+genes = hits_dat$target_id
+genes = hits[match(genes,hits$target_id),'ext_gene']
+hits_dat = as.matrix(hits_dat[,2:ncol(hits_dat)])
+rownames(hits_dat) = genes
+
+zeros = which(hits_dat <= 0, arr.ind = T)
+for(i in 1:nrow(zeros)){
+  hits_dat[zeros[i,1], zeros[i,2]] = 1
+}
+```
+
+### Heatmap of Differentially Expressed Genes
+
+```{r message=FALSE, warning=FALSE}
+hits_dat = t(apply(hits_dat, 1, function(x) x / mean(x)))
+
+annotation = dplyr::select(s2c, Day, Treatment) %>% mutate(Day = as.numeric(Day)) %>% as.data.frame()
+rownames(annotation) <- s2c$sample
+
+mypal = rev(colorRampPalette(brewer.pal(11, "RdBu"))(n=200))
+
+pheatmap(log2(hits_dat), breaks = seq(-3,3,6/(length(mypal))), 
+         color = mypal, 
+         show_rownames = F,
+         show_colnames = T,
+         annotation_col = annotation,
+         cutree_cols = 2,
+         clustering_distance_cols = 'correlation')
+
+```
+
+There is a group of samples that cluster together for seemingly unknown reasons. We believe that these might be technical outliers. I will highlight these in the PCA plot to see if they are also outliers there. We might consider excluding these.
+
+These samples are 8, 9, 43.
+
+```{r message=FALSE, warning=FALSE, echo=TRUE}
+outliers = filter(s2c, sample %in% c(8, 9, 43)) %>% 
+  dplyr::select(sample, Pellet, Delivery, Day, Replicate) %>% 
+  data.table::setorder(Delivery, Day, Replicate) %>% dplyr::rename(`Sample #` = sample, Condition = Pellet)
+
+knitr::kable(outliers, row.names = F) %>% kable_styling()
+```
+
+
+### PCA of Differentially Expressed Genes
+
+```{r message=FALSE, warning=FALSE}
+pca = prcomp(t(hits_dat), center = T, scale. = T)
+
+pcaSum = summary(pca)$importance %>% t() %>% as.data.frame() %>% mutate(PC = rownames(.)) %>%
+  gather(key = plot, value = value, 1:3)
+pcaSum$PC <- factor(pcaSum$PC, levels = paste0('PC',1:ncol(hits_dat)))
+
+ggplot(pcaSum, aes(x = PC, y = value)) + geom_point() +
+  facet_wrap(~plot, scales = 'free', ncol = 1) + theme_classic() +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1)) + ylim(0, NA)
+
+
+pcaDF = tibble(sample = as.numeric(rownames(pca$x)), PC1 = pca$x[,1], PC2 = pca$x[,2])
+pcaDF = full_join(pcaDF, s2c, by = 'sample') %>% mutate(Day = as.factor(Day))
+pcaDF = pcaDF %>% mutate(outlier = ifelse(sample %in% c(8, 9, 43), T, F))
+
+# 2D PCA between PC1 and PC2
+ggplot(pcaDF, aes(x = PC1, y = PC2, colour = Pellet, size = Day, shape = Delivery)) + geom_point(alpha = 0.5) + theme_bw()
+
+# 1D PCA plots since PC1 explains the majority of the variance
+ggplot(gather(pcaDF,key = PC, value = value, PC1:PC2), aes(x = value, fill = Treatment)) + geom_dotplot(alpha = 0.5, binwidth = 5) + theme_bw() + facet_wrap(~PC, ncol = 1)
+
+# Outlier colored PCA plots
+ggplot(pcaDF, aes(x = PC1, y = PC2, colour = outlier, size = Day, shape = Delivery)) + geom_point(alpha = 0.5) + theme_bw()
+
+ggplot(gather(pcaDF,key = PC, value = value, PC1:PC2), aes(x = value, fill = outlier)) + geom_dotplot(alpha = 0.5, binwidth = 5) + theme_bw() + facet_wrap(~PC, ncol = 1)
+
+```
+
+
+### Enrched genes with and without outliers
+
+In order to see if there is an impact on which genes are significantly differentially expressed with the outliers, we re-ran the DESeq model without them and looked for overlap between the gene sets.
+
+```{r message=FALSE, warning=FALSE}
+
+### MetaData w/o outliers ###
+
+s2c2 = dplyr::filter(s2c, !sample %in% c(8, 9, 43))
+
+### Retrieve GeneNames and import data ###
+so2 <- sleuth_prep(s2c2, target_mapping = t2g, num_cores = max(1L, parallel::detectCores() - 1L), extra_bootstrap_summary = TRUE)
+
+### DESeq w/o outliers ###
+
+full_design <- model.matrix(formula(~ s2c2$Treatment + s2c2$lane + s2c2$Replicate, s2c2$Day))
+
+so2 <- sleuth_fit(so2, full_design, 'full')
+so2 <- sleuth_fit(so2, formula = ~ s2c2$lane + s2c2$Replicate, fit_name = "reduced")
+so2 <- sleuth_lrt(so2, "reduced", "full")
+
+#plot_qq(so2, test = 'reduced:full', test_type = 'lrt', sig_level = 0.05)
+
+lrt_results2 <- sleuth_results(so2, 'reduced:full', test_type = 'lrt')
+table(lrt_results2[,"qval"] < 0.05)
+
+### Select enriched genes ###
+
+hits2 = filter(lrt_results2, qval < 0.05)
+hits_dat2 = so2$obs_norm_filt %>% dplyr::select(target_id, sample, est_counts) %>% filter(target_id %in% hits2$target_id) %>% spread(key = sample, value = est_counts)
+genes = hits_dat2$target_id
+genes = hits2[match(genes,hits2$target_id),'ext_gene']
+hits_dat2 = as.matrix(hits_dat2[,2:ncol(hits_dat2)])
+rownames(hits_dat2) = genes
+
+zeros = which(hits_dat2 <= 0, arr.ind = T)
+for(i in 1:nrow(zeros)){
+  hits_dat2[zeros[i,1], zeros[i,2]] = 1
+}
+```
+
+### Overlap between the two hit lists
+
+```{r message=FALSE, warning=FALSE}
+hitIntersect = length(base::intersect(rownames(hits_dat),rownames(hits_dat2)))
+uniqueFull = sum(!duplicated(rownames(hits_dat)))
+uniqueRem = sum(!duplicated(rownames(hits_dat2)))
+
+VennDiagram::draw.pairwise.venn(uniqueFull, uniqueRem, hitIntersect, category = c("All Samples", "Outliers Removed"), lty = rep("blank", 2), fill = c("light blue", "pink"), alpha = rep(0.5, 2))
+
+#intersect = base::intersect(rownames(hits_dat),rownames(hits_dat2))
+#fullExcl = rownames(hits_dat)[!duplicated(rownames(hits_dat))][!c(rownames(hits_dat)[!duplicated(rownames(hits_dat))] %in% intersect)]
+
+#write_csv(as.tibble(intersect), '/Users/kylekovary/Downloads/intersect.csv')
+#write_csv(as.tibble(fullExcl), '/Users/kylekovary/Downloads/fullExcl.csv')
+
+write_csv(as_tibble(rownames(hits_dat)[!duplicated(rownames(hits_dat))]), '/Users/kylekovary/Downloads/withOutliers.csv')
+write_csv(as_tibble(rownames(hits_dat2)[!duplicated(rownames(hits_dat2))]), '/Users/kylekovary/Downloads/noOutliers.csv')
+write_csv(as_tibble(lrt_results$ext_gene[!duplicated(lrt_results$ext_gene)]), '/Users/kylekovary/Downloads/allGenes.csv')
+
+```
+
+
+### Overlap of hits: Combining time samples w/ FDR corrected p-values vs individual time points w/o FDR corrected p-values
+
+```{r message=FALSE, warning=FALSE, eval=FALSE}
+
+
+tpm = read_csv('../data/wat_normalized_data_genelevel_tpm.csv') %>%
+  separate(sample, into = c('Treatment','Delivery','Day','Replicate'), remove = F)
+
+volDay3 = tpm %>% filter(Delivery == 'pellet', Day == 3) %>% group_by(GeneName) %>% 
+  summarise(FC = mean(TPM[Treatment == 'Cort'], na.rm = T) / mean(TPM[Treatment == 'Sham'], na.rm = T),
+            pval = t.test(TPM[Treatment == 'Cort'], TPM[Treatment == 'Sham'], na.rm = T)$p.value) %>%
+  mutate(hit = ifelse(abs(log2(FC)) >= log2(1.5) &  pval <= 0.05, T, F)) %>%
+  dplyr::select(GeneName, hit)
+
+
+volDay7 = tpm %>% filter(Delivery == 'pellet', Day == 7) %>% group_by(GeneName) %>% 
+  summarise(FC = mean(TPM[Treatment == 'Cort'], na.rm = T) / mean(TPM[Treatment == 'Sham'], na.rm = T),
+            pval = t.test(TPM[Treatment == 'Cort'], TPM[Treatment == 'Sham'], na.rm = T)$p.value) %>%
+  mutate(hit = ifelse(abs(log2(FC)) >= log2(1.5) &  pval <= 0.05, T, F)) %>%
+  dplyr::select(GeneName, hit)
+
+
+volDay14 = tpm %>% filter(Delivery == 'pellet', Day == 14) %>% group_by(GeneName) %>% 
+  summarise(FC = mean(TPM[Treatment == 'Cort'], na.rm = T) / mean(TPM[Treatment == 'Sham'], na.rm = T),
+            pval = t.test(TPM[Treatment == 'Cort'], TPM[Treatment == 'Sham'], na.rm = T)$p.value) %>%
+  mutate(hit = ifelse(abs(log2(FC)) >= log2(1.5) &  pval <= 0.05, T, F)) %>%
+  dplyr::select(GeneName, hit)
+
+
+volPellet = tpm %>% filter(Delivery == 'pellet') %>% group_by(GeneName) %>% 
+  summarise(FC = mean(TPM[Treatment == 'Cort'], na.rm = T) / mean(TPM[Treatment == 'Sham'], na.rm = T),
+            pval = t.test(TPM[Treatment == 'Cort'], TPM[Treatment == 'Sham'], na.rm = T)$p.value) %>%
+  mutate(pval = p.adjust(pval, 'BH'),
+         hit = ifelse(abs(log2(FC)) >= log2(1.5) &  pval <= 0.05, T, F)) %>%
+  dplyr::select(GeneName, hit)
+
+a = cbind(volDay3$hit, volDay7$hit, volDay14$hit, volPellet$hit)
+colnames(a) = c('Day3','Day7','Day14','AllFDR')
+
+plot(euler(a, shape = "ellipse"), quantities = TRUE)
+
+nHits = tibble(name = c('Day3','Day7','Day14','AllFDR'), 
+               nHits = c(sum(a[,1]),sum(a[,2]),sum(a[,3]),sum(a[,4])))
+ggplot(nHits, aes(x = name, y = nHits, fill = name)) + geom_bar(stat = 'identity') + theme_bw()
+```
+
+### GO Term Analysis
+
+```{r message=FALSE, warning=FALSE, eval=FALSE}
+library(AnnotationHub)
+library(AnnotationDbi)
+library(clusterProfiler)
+library(org.Mm.eg.db)
+
+tpmFC = tpm %>% filter(Delivery == 'pellet') %>% group_by(GeneName) %>% 
+  summarise(FC = mean(TPM[Treatment == 'Cort'], na.rm = T) / mean(TPM[Treatment == 'Sham'], na.rm = T),
+            pval = t.test(TPM[Treatment == 'Cort'], TPM[Treatment == 'Sham'], na.rm = T)$p.value) %>%
+  mutate(pval = p.adjust(pval, 'BH'),
+         hit = ifelse(abs(log2(FC)) >= log2(1.5) &  pval <= 0.05, T, F))
+
+zScore <- function(x, subsetFC){
+  genes <-  x %>% strsplit('/') %>% unlist()
+  convert  <-  filter(universe, ENTREZID %in% genes)$SYMBOL
+  convert <- convert[!duplicated(convert)]
+  
+  FC <-  filter(subsetFC, GeneName %in% convert)$FC
+  return((sum(FC >= 1.5) - sum(FC <= (1/1.5))) / sqrt(length(FC)))
+}
+
+allEnrichGO <- function(data){
+  
+  gene.df <- bitr(filter(data, hit == T)$GeneName, fromType = 'SYMBOL', toType = 'ENTREZID', OrgDb = org.Mm.eg.db)
+  universe <- bitr(data$GeneName, fromType = 'SYMBOL', toType = 'ENTREZID', OrgDb = org.Mm.eg.db)
+  
+  
+  goDF = enrichGO(gene = gene.df$ENTREZID, universe = universe$ENTREZID, ont = 'ALL', OrgDb = org.Mm.eg.db)
+  #goDF = goDF %>% as.tibble() %>% mutate('Category' = goTypes[i])
+  
+  goDF = goDF %>% as_tibble() %>% rowwise() %>% dplyr::mutate(zscore = zScore(geneID, data))
+}
+
+gene.df <- bitr(filter(tpmFC, hit == T)$GeneName, fromType = 'SYMBOL', toType = 'ENTREZID', OrgDb = org.Mm.eg.db)
+universe <- bitr(tpmFC$GeneName, fromType = 'SYMBOL', toType = 'ENTREZID', OrgDb = org.Mm.eg.db)
+
+ego <- enrichGO(gene          = gene.df$ENTREZID,
+                universe      = universe$ENTREZID,
+                ont           = 'MF',
+                OrgDb         = org.Mm.eg.db)
+
+dotplot(ego, showCategory=30)
+
+test = allEnrichGO(tpmFC)
+
+ggplot(test, aes(x = zscore, y = -log10(p.adjust), size = Count, colour = ONTOLOGY)) + geom_point(alpha = 0.15) + theme_bw() + facet_wrap(~ONTOLOGY)
+
+  
+```
+
+
+
+
+
+
+
+
+
+
+

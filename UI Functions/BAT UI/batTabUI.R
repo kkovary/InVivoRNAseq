@@ -3,7 +3,7 @@ source('UI Functions/BAT UI/goTermsUI.R')
 source('UI Functions/BAT UI/volcanoUI.R')
 
 batTabUI <- navbarMenu("BAT",
-                     tabPanel('Analysis', includeHTML('HTML and Rmd FIles/Analysis.html')),
+                     tabPanel('Analysis', includeHTML('HTML and Rmd Files/Analysis.html')),
                      barPlotUI,
                      goTermsUI,
                      volcanoUI,
