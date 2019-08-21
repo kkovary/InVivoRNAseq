@@ -1,6 +1,6 @@
-source('UI Functions/titlePage.R')
-source('UI Functions/BAT UI/batTabUI.R')
-source('UI Functions/WAT UI/watTabUI.R')
+source('UI_Functions/titlePage.R')
+source('UI_Functions/BAT_UI/batTabUI.R')
+source('UI_Functions/WAT_UI/watTabUI.R')
 
 shinyUI(
   navbarPage('InVivoRNAseq',
