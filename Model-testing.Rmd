@@ -1,0 +1,668 @@
+---
+title: Flattened circadian glucocorticoid oscillations cause obesity due to increased
+  lipid turnover and lipid uptake
+author: Stefan Tholen, Kyle Kovary, Atefeh Rabiee, Ewa Bielczyk-Maczyńska, Wenting
+  Yang, and Mary N. Teruel
+date: 'Updated: `r format(Sys.time())`'
+output: html_document
+---
+
+```{r setup, message=FALSE, warning=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
+library(tidyverse)
+library(sleuth)
+library(readxl)
+library(pheatmap)
+library(RColorBrewer)
+library(kableExtra)
+library(eulerr)
+```
+
+### Introduction
+
+This is a summary of the RNA-seq analysis with interfaces to explore the data collected for the project "Circadian glucocorticoid oscillations are required to maintain functional brown adipose tissue". This is an evolving project so expect the analysis, plot types, and interface to change over time. If anyone has suggestions please contact Kyle.
+
+
+### Abstract
+
+Chronic stressors flatten circadian glucocorticoid oscillations, which has been correlated with negative health outcomes including obesity. How flatter circadian glucocorticoid oscillations affect metabolism and fat storage remains unknown. Here we aimed to investigate consequences of flattened glucocorticoid oscillations in mice. We found that flattening glucocorticoid oscillations not only results in body weight gain mainly due to an increase in white fat depot mass, but also leads fat accumulation in brown adipose tissue and hyperinsulinemia. A transcriptomic analysis of white and brown adipose tissues revealed that flattened glucocorticoid oscillations resulted in a dysregulated lipid metabolism with a prominent role of Cd36. Indeed, Cd36 knockout mice are partially protected against body weight gain and lipid accumulation in the brown and visceral white fat depots induced by flattened glucocorticoid oscillations. These results provide insights how conditions associated with flattened glucocorticoid levels cause obesity.
+
+### Sample Metadata Import
+
+```{r metadata table, message=FALSE, warning=FALSE}
+# Set up metadata table for WAT data
+# In previous analysis (see WAT_Analysis.Rmd) samples 8,9,43 (mice 211, 223, 229)
+# were determined to be outliers and will be excluded
+
+wat_sample_list = read_xlsx(
+  '/Users/kylekovary/Box Sync/kkovary/R Projects/RNAseq/Stefan RNA-seq WAT analysis/Stefan Tholen_Samples_for_RNAseq_WAT.xlsx'
+) %>%
+  mutate(fat = 'WAT', lane = paste0(lane, '_WAT')) %>%
+  dplyr::rename(sample_name = `Sample Name`) %>%
+  unite('sample_name', c(sample_name, fat)) %>%
+  dplyr::select(lane, mouse, sample_name)
+
+path = list.dirs(
+  '/Users/kylekovary/Box Sync/kkovary/R Projects/RNAseq/Stefan RNA-seq WAT analysis/kallisto_output'
+)[-c(1, 2)]
+path = path %>% as_tibble() %>%
+  separate(
+    col = value,
+    into = c('a', 'mouse'),
+    sep = 'ST',
+    remove = F
+  ) %>% dplyr::select(value, mouse) %>%
+  separate(
+    col = mouse,
+    into = c('b', 'mouse'),
+    sep = '-',
+    remove = T
+  ) %>% dplyr::select(value, mouse)
+
+s2c_wat = bind_cols(wat_sample_list, path[match(wat_sample_list$mouse, path$mouse), 1]) %>%
+  dplyr::rename(path = value) %>%
+  separate(
+    sample_name,
+    into = c('condition', 'delivery', 'day', 'replicate', 'depot'),
+    remove = F
+  ) %>%
+  unite('treatment', c('condition', 'delivery'), remove = F) %>%
+  dplyr::rename(sample = sample_name) %>%
+  filter(!mouse %in% c(211, 223, 229)) #%>%
+#unite('Treatment',c('Pellet','Delivery'), remove = F)
+
+# Set up BAT metadata table
+bat_sample_list = read_xlsx(
+  '/Users/kylekovary/Box Sync/kkovary/R Projects/RNAseq/Stefan RNA-seq BAT analysis/Stefan Tholen_Samples_for_RNAseq_BAT.xlsx'
+) %>%
+  mutate(fat = 'BAT', lane = paste0(lane, '_BAT')) %>%
+  dplyr::rename(sample_name = `Sample Name`) %>%
+  unite('sample_name', c(sample_name, fat)) %>%
+  dplyr::select(lane, mouse, sample_name)
+
+path = list.dirs(
+  '/Users/kylekovary/Box Sync/kkovary/R Projects/RNAseq/Stefan RNA-seq BAT analysis/kallisto_output/'
+)[-c(1, 2)]
+path = path %>% as_tibble() %>%
+  separate(
+    col = value,
+    into = c('a', 'mouse'),
+    sep = 'ST-',
+    remove = F
+  ) %>%
+  dplyr::select(value, mouse)
+
+s2c_bat = bind_cols(bat_sample_list, path[match(bat_sample_list$mouse, path$mouse), 1]) %>%
+  dplyr::rename(path = value) %>%
+  separate(
+    sample_name,
+    into = c('condition', 'delivery', 'day', 'replicate', 'depot'),
+    remove = F
+  ) %>%
+  unite('treatment', c('condition', 'delivery'), remove = F) %>%
+  dplyr::rename(sample = sample_name)
+
+s2c <- rbind(s2c_wat, s2c_bat)
+```
+
+### Gene ID import
+
+```{r import gene names, eval=TRUE, message=FALSE, warning=FALSE}
+
+# Retrieve GeneNames
+library(biomaRt)
+mart <- biomaRt::useMart(biomart = "ENSEMBL_MART_ENSEMBL",
+                         dataset = "mmusculus_gene_ensembl",
+                         host = "dec2015.archive.ensembl.org")
+# host = "ensembl.org")
+t2g <- biomaRt::getBM(
+  attributes = c(
+    "ensembl_transcript_id",
+    "transcript_version",
+    "ensembl_gene_id",
+    "external_gene_name",
+    "description",
+    "transcript_biotype",
+    'external_transcript_name'
+  ),
+  mart = mart
+)
+t2g <- dplyr::rename(t2g,
+                     target_id = ensembl_transcript_id,
+                     ens_gene = ensembl_gene_id,
+                     ext_gene = external_gene_name)
+
+```
+
+### Generate sleuth objects
+
+```{r data import, eval=FALSE, message=FALSE, warning=FALSE}
+
+
+so_all <- sleuth_prep(
+  s2c,
+  target_mapping = t2g,
+  num_cores = max(1L, parallel::detectCores() - 1L),
+  extra_bootstrap_summary = TRUE,
+  read_bootstrap_tpm = TRUE
+)
+so_wat <- sleuth_prep(
+  s2c_wat,
+  target_mapping = t2g,
+  num_cores = max(1L, parallel::detectCores() - 1L),
+  extra_bootstrap_summary = TRUE,
+  read_bootstrap_tpm = TRUE
+)
+so_bat <- sleuth_prep(
+  s2c_bat,
+  target_mapping = t2g,
+  num_cores = max(1L, parallel::detectCores() - 1L),
+  extra_bootstrap_summary = TRUE,
+  read_bootstrap_tpm = TRUE
+)
+
+sleuth_save(so_all, '~/Documents/GitHub/ShinyApps/InVivoRNAseq/so_all')
+sleuth_save(so_wat, '~/Documents/GitHub/ShinyApps/InVivoRNAseq/so_wat')
+sleuth_save(so_bat, '~/Documents/GitHub/ShinyApps/InVivoRNAseq/so_bat')
+
+```
+
+### Import sleuth objects
+
+```{r message=FALSE, warning=FALSE}
+
+so_all <- sleuth_load('~/Documents/GitHub/ShinyApps/InVivoRNAseq/so_all')
+so_wat <- sleuth_load('~/Documents/GitHub/ShinyApps/InVivoRNAseq/so_wat')
+so_bat <- sleuth_load('~/Documents/GitHub/ShinyApps/InVivoRNAseq/so_bat')
+
+full_design <- model.matrix(formula( ~ treatment + depot + as.numeric(day)), data = s2c)
+
+so_all <- sleuth_fit(so_all, formula = full_design, fit_name = "full")
+so_all <- sleuth_fit(so_all, formula = ~ depot + as.numeric(day), fit_name = "reduced")
+so_all <- sleuth_lrt(so_all, "reduced", "full")
+
+#plot_qq(so, test = 'reduced:full', test_type = 'lrt', sig_level = 0.05)
+
+lrt_results <- sleuth_results(so_all, 'reduced:full', test_type = 'lrt')
+table(lrt_results[, "qval"] < 0.05)
+
+
+
+
+
+full_design <- model.matrix(formula( ~ s2c_wat$treatment + s2c_wat$lane + s2c_wat$replicate, s2c_wat$day))
+
+so_wat <- sleuth_fit(so_wat, formula = full_design, fit_name = "full")
+so_wat <- sleuth_fit(so_wat, formula = ~ s2c_wat$lane + s2c_wat$replicate, fit_name = "reduced")
+so_wat <- sleuth_lrt(so_wat, "reduced", "full")
+
+lrt_results <- sleuth_results(so_wat, 'reduced:full', test_type = 'lrt')
+table(lrt_results[, "qval"] < 0.05)
+
+```
+
+
+```{r}
+hits = filter(lrt_results, qval < 0.05)
+hits_dat = so_all$obs_norm %>% dplyr::select(target_id, sample, est_counts) %>% 
+  filter(target_id %in% hits$target_id) %>% spread(key = sample, value = est_counts)
+genes = hits_dat$target_id
+genes = hits[match(genes,hits$target_id),'external_transcript_name']
+hits_dat = as.matrix(hits_dat[,2:ncol(hits_dat)])
+rownames(hits_dat) = genes
+
+zeros = which(hits_dat <= 0, arr.ind = T)
+for(i in 1:nrow(zeros)){
+  hits_dat[zeros[i,1], zeros[i,2]] = 1
+}
+
+# Filter for conditions of interest
+annotation = dplyr::select(s2c, sample, day, treatment, depot) %>% 
+  #filter(Treatment %in% c('Control_na','Cort_injection', 'PBS_injection')) %>% 
+  mutate(day = as.numeric(day)) %>% as.data.frame()
+
+annotation = annotation[order(annotation$treatment),]
+annotation_cols = list(ID = c(Control_na = '#bababa', Cort_injection = '#BF19C2', Cort_pellet = '#2CABCE',
+                              Placebo_injection = '#2C9140', Placebo_pellet = '#AD2E24'))
+
+cols <- colorRampPalette(brewer.pal(5, "Set1"))
+mycolors <- cols(length(unique(annotation$Treatment)))
+names(mycolors) <- unique(annotation$Treatment)
+mycolors <- list(mycolors = mycolors)
+
+
+hits_dat <- hits_dat[,colnames(hits_dat) %in% annotation$sample]
+# Heatmap of Differentially Expressed Genes
+hits_dat = t(apply(hits_dat, 1, function(x) x / mean(x)))
+
+
+rownames(annotation) <- annotation$sample
+annotation <- dplyr::select(annotation, -sample)
+
+mypal = rev(colorRampPalette(brewer.pal(11, "RdBu"))(n=200))
+
+pheatmap(log2(hits_dat), breaks = seq(-3,3,6/(length(mypal))), 
+         color = mypal, 
+         show_rownames = F,
+         show_colnames = F,
+         annotation_col = annotation,
+         #annotation_colors = annotation_cols$ID,
+         #cutree_cols = 2,
+         clustering_distance_cols = 'correlation',
+         border_color = F
+         )
+```
+
+
+```{r}
+pca = prcomp(t(hits_dat), center = T, scale. = T)
+
+pcaSum = summary(pca)$importance %>% t() %>% as.data.frame() %>% mutate(PC = rownames(.)) %>%
+  gather(key = plot, value = value, 1:3)
+pcaSum$PC <- factor(pcaSum$PC, levels = paste0('PC',1:ncol(hits_dat)))
+
+ggplot(pcaSum, aes(x = PC, y = value)) + geom_point() +
+  facet_wrap(~plot, scales = 'free', ncol = 1) + theme_classic() +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1)) + ylim(0, NA)
+
+
+pcaDF = tibble(sample = rownames(pca$x), PC1 = pca$x[,1], PC2 = pca$x[,2], PC3 = pca$x[,3])
+pcaDF = full_join(pcaDF, s2c, by = 'sample') %>% mutate(day = as.factor(day))
+#pcaDF = pcaDF %>% mutate(outlier = ifelse(sample %in% c(8, 9, 43), T, F))
+
+# 2D PCA between PC1 and PC2
+ggplot(pcaDF, aes(x = PC1, y = PC2, colour = treatment, size = day, shape = depot)) + geom_point(alpha = 0.5) + theme_bw()
+
+ggplot(gather(pcaDF,key = PC, value = value, PC1:PC3), aes(x = value, fill = treatment)) + geom_dotplot(alpha = 0.5) + theme_bw() + facet_wrap(~PC, ncol = 1)
+
+```
+
+
+```{r}
+s2cX <- s2c %>% filter(depot == 'WAT', treatment %in% c('Cort_pellet','Placebo_pellet'))
+so_wat <- sleuth_prep(
+  s2cX,
+  target_mapping = t2g,
+  aggregation_column = 'ext_gene',
+  extra_bootstrap_summary = TRUE
+)
+
+## Transcript level comparison
+# LRT w/ lane
+so_wat <- sleuth_fit(so_wat, formula = ~ s2cX$treatment + s2cX$lane, fit_name = "full")
+so_wat <- sleuth_fit(so_wat, formula = ~ s2cX$lane, fit_name = "reduced")
+
+so_wat <- sleuth_lrt(so_wat, "reduced", "full")
+lrt_ln_results <- sleuth_results(so_wat, 'reduced:full', test_type = 'lrt', pval_aggregate = FALSE) %>%
+  rename(lrt_ln_qval = qval)
+table(lrt_ln_results[, "lrt_ln_qval"] < 0.05)
+
+# LRT w/o lane
+so_wat <- sleuth_fit(so_wat, formula = ~ s2cX$treatment, fit_name = "full")
+so_wat <- sleuth_fit(so_wat, formula = ~ 1, fit_name = "reduced")
+
+so_wat <- sleuth_lrt(so_wat, "reduced", "full")
+lrt_results <- sleuth_results(so_wat, 'reduced:full', test_type = 'lrt', pval_aggregate = FALSE) %>%
+  rename(lrt_qval = qval)
+table(lrt_results[, "lrt_qval"] < 0.05)
+
+# Wald Test
+models(so_wat)
+
+so_wat <- sleuth_wt(so_wat, 's2cX$treatmentPlacebo_pellet')
+wt_results <- sleuth_results(so_wat, 's2cX$treatmentPlacebo_pellet', test_type = 'wt', pval_aggregate = FALSE) %>%
+  rename(wt_qval = qval)
+table(wt_results[, "wt_qval"] < 0.05)
+
+# Fold change / adjusted pval
+so_wat_dat <- kallisto_table(so_wat) %>% group_by(target_id) %>%
+  summarise(fc = mean(est_counts[treatment == 'Cort_pellet'], na.rm = T) / 
+              mean(est_counts[treatment == 'Placebo_pellet'], na.rm = T),
+            pval = t.test(est_counts[treatment == 'Cort_pellet'], 
+                          est_counts[treatment == 'Placebo_pellet'])$p.value) %>%
+  mutate(tt_qval = p.adjust(pval, 'BH'))
+table(so_wat_dat[, "tt_qval"] < 0.05)
+
+# Join 3 methods
+joined_results <- dplyr::full_join(
+  dplyr::select(lrt_results,
+                target_id,
+                ens_gene,
+                ext_gene,
+                lrt_qval),
+  dplyr::select(so_wat_dat,
+                target_id,
+                fc,
+                tt_qval),
+  by = "target_id"
+) %>%
+  dplyr::full_join(
+    dplyr::select(lrt_ln_results,
+                  target_id,
+                  lrt_ln_qval),
+    by = 'target_id') %>%
+  dplyr::full_join(
+    dplyr::select(wt_results,
+                  target_id,
+                  b,
+                  wt_qval),
+    by = 'target_id'
+  ) %>% as_tibble() %>% 
+  dplyr::select(target_id, ens_gene, ext_gene, fc, b, everything())
+
+# Compare models
+# Num Hits
+joined_results %>% dplyr::select(-ens_gene, -ext_gene, -fc, -b) %>% 
+  rename(lrt = lrt_qval, lrt_ln = lrt_ln_qval, t.test = tt_qval, wald.test = wt_qval) %>%
+  pivot_longer(names_to = 'test', values_to = 'qval', lrt:wald.test) %>%
+  group_by(test) %>% summarise(num_hits = sum(qval < 0.05, na.rm = T)) %>%
+  ggplot(., aes(x = fct_reorder(test, num_hits), y = num_hits)) + geom_bar(stat = 'identity') +
+  ylab('Number of transcript hits') + xlab('Significance Test') + theme_bw() + theme(text = element_text(size=20))
+
+# Venn Diagram
+a = cbind(joined_results$tt_qval < 0.05,
+          joined_results$wt_qval < 0.05,
+          joined_results$lrt_qval < 0.05,
+          joined_results$lrt_ln_qval < 0.05)
+colnames(a) = c('t.test','wald.test','lrt','lrt.ln')
+a[is.na(a)] = FALSE
+
+plot(euler(a, shape = "ellipse"), quantities = TRUE)
+
+####################
+# GO Term analysis #
+####################
+library(clusterProfiler)
+library(org.Mm.eg.db)
+library(ggrepel)
+
+# LRT w lane
+gene.df <- clusterProfiler::bitr(dplyr::filter(joined_results, lrt_ln_qval < 0.05)$ext_gene, 
+                                 fromType = 'SYMBOL', 
+                                 toType = 'ENTREZID', 
+                                 OrgDb = org.Mm.eg.db)
+
+    
+universe <- clusterProfiler::bitr(joined_results$ext_gene, 
+                                  fromType = 'SYMBOL', 
+                                  toType = 'ENTREZID', 
+                                  OrgDb = org.Mm.eg.db)
+
+    
+goDF <- clusterProfiler::enrichGO(gene = gene.df$ENTREZID, 
+                                  universe = universe$ENTREZID, 
+                                  ont = 'ALL', 
+                                  OrgDb = org.Mm.eg.db)
+
+subsetFC <- joined_results %>% dplyr::rename(GeneName = ext_gene, FC = fc) %>% 
+  mutate(FC = log2(FC))
+    
+goDF <- goDF %>% as_tibble() %>% group_by(ONTOLOGY) %>% mutate(rank = rank(p.adjust)) %>%
+  rowwise() %>% dplyr::mutate(zscore = zScore(geneID, subsetFC, universe))
+
+ggplot(filter(goDF, !ONTOLOGY == 'CC', p.adjust < 0.05), 
+       aes(x = rank, y = -log10(p.adjust), size = Count)) + 
+  geom_point(alpha= 0.25) + facet_wrap(~ONTOLOGY, scales = 'free', ncol = 1) +
+  geom_text_repel(data = filter(goDF, rank <= 20, !ONTOLOGY == 'CC'),
+                    aes(label = Description), colour = 'black', size = 3, force = 10) +
+  xlim(0,20) + ylim(3,NA)
+
+ggplot(filter(goDF, !ONTOLOGY == 'CC'), 
+       aes(x = zscore, y = -log10(p.adjust), size = Count)) + 
+  geom_point(alpha= 0.25) + facet_wrap(~ONTOLOGY, scales = 'free', ncol = 1) +
+  geom_text_repel(data = filter(goDF, rank <= 20, !ONTOLOGY == 'CC'),
+                    aes(label = Description), colour = 'black', size = 3, force = 10)
+
+##########################
+# LRT w/o lane
+gene.df <- clusterProfiler::bitr(dplyr::filter(joined_results, lrt_qval < 0.05)$ext_gene, 
+                                 fromType = 'SYMBOL', 
+                                 toType = 'ENTREZID', 
+                                 OrgDb = org.Mm.eg.db)
+
+    
+universe <- clusterProfiler::bitr(joined_results$ext_gene, 
+                                  fromType = 'SYMBOL', 
+                                  toType = 'ENTREZID', 
+                                  OrgDb = org.Mm.eg.db)
+
+    
+goDF <- clusterProfiler::enrichGO(gene = gene.df$ENTREZID, 
+                                  universe = universe$ENTREZID, 
+                                  ont = 'ALL', 
+                                  OrgDb = org.Mm.eg.db)
+
+subsetFC <- joined_results %>% dplyr::rename(GeneName = ext_gene, FC = fc) %>% 
+  mutate(FC = log2(FC))
+    
+goDF <- goDF %>% as_tibble() %>% group_by(ONTOLOGY) %>% mutate(rank = rank(p.adjust)) %>%
+  rowwise() %>% dplyr::mutate(zscore = zScore(geneID, subsetFC, universe))
+
+ggplot(filter(goDF, !ONTOLOGY == 'CC', p.adjust < 0.05), 
+       aes(x = rank, y = -log10(p.adjust), size = Count)) + 
+  geom_point(alpha= 0.25) + facet_wrap(~ONTOLOGY, scales = 'free', ncol = 1) +
+  geom_text_repel(data = filter(goDF, rank <= 20, !ONTOLOGY == 'CC'),
+                    aes(label = Description), colour = 'black', size = 3, force = 10) +
+  xlim(0,20) + ylim(3,NA)
+
+ggplot(filter(goDF, !ONTOLOGY == 'CC'), 
+       aes(x = zscore, y = -log10(p.adjust), size = Count)) + 
+  geom_point(alpha= 0.25) + facet_wrap(~ONTOLOGY, scales = 'free', ncol = 1) +
+  geom_text_repel(data = filter(goDF, rank <= 20, !ONTOLOGY == 'CC'),
+                    aes(label = Description), colour = 'black', size = 3, force = 10)
+
+##########################
+# WT
+gene.df <- clusterProfiler::bitr(dplyr::filter(joined_results, wt_qval < 0.05)$ext_gene, 
+                                 fromType = 'SYMBOL', 
+                                 toType = 'ENTREZID', 
+                                 OrgDb = org.Mm.eg.db)
+
+    
+universe <- clusterProfiler::bitr(joined_results$ext_gene, 
+                                  fromType = 'SYMBOL', 
+                                  toType = 'ENTREZID', 
+                                  OrgDb = org.Mm.eg.db)
+
+    
+goDF <- clusterProfiler::enrichGO(gene = gene.df$ENTREZID, 
+                                  universe = universe$ENTREZID, 
+                                  ont = 'ALL', 
+                                  OrgDb = org.Mm.eg.db)
+
+subsetFC <- joined_results %>% dplyr::rename(GeneName = ext_gene, FC = fc) %>% 
+  mutate(FC = log2(FC))
+    
+goDF <- goDF %>% as_tibble() %>% group_by(ONTOLOGY) %>% mutate(rank = rank(p.adjust)) %>%
+  rowwise() %>% dplyr::mutate(zscore = zScore(geneID, subsetFC, universe))
+
+ggplot(filter(goDF, !ONTOLOGY == 'CC', p.adjust < 0.05), 
+       aes(x = rank, y = -log10(p.adjust), size = Count)) + 
+  geom_point(alpha= 0.25) + facet_wrap(~ONTOLOGY, scales = 'free', ncol = 1) +
+  geom_text_repel(data = filter(goDF, rank <= 20, !ONTOLOGY == 'CC'),
+                    aes(label = Description), colour = 'black', size = 3, force = 10) +
+  xlim(0,20) + ylim(3,NA)
+
+ggplot(filter(goDF, !ONTOLOGY == 'CC'), 
+       aes(x = zscore, y = -log10(p.adjust), size = Count)) + 
+  geom_point(alpha= 0.25) + facet_wrap(~ONTOLOGY, scales = 'free', ncol = 1) +
+  geom_text_repel(data = filter(goDF, rank <= 20, !ONTOLOGY == 'CC'),
+                    aes(label = Description), colour = 'black', size = 3, force = 10)
+
+
+##########################
+# T-Test
+gene.df <- clusterProfiler::bitr(dplyr::filter(joined_results, tt_qval < 0.05)$ext_gene, 
+                                 fromType = 'SYMBOL', 
+                                 toType = 'ENTREZID', 
+                                 OrgDb = org.Mm.eg.db)
+
+    
+universe <- clusterProfiler::bitr(joined_results$ext_gene, 
+                                  fromType = 'SYMBOL', 
+                                  toType = 'ENTREZID', 
+                                  OrgDb = org.Mm.eg.db)
+
+    
+goDF <- clusterProfiler::enrichGO(gene = gene.df$ENTREZID, 
+                                  universe = universe$ENTREZID, 
+                                  ont = 'ALL', 
+                                  OrgDb = org.Mm.eg.db)
+
+subsetFC <- joined_results %>% dplyr::rename(GeneName = ext_gene, FC = fc) %>% 
+  mutate(FC = log2(FC))
+
+goDF <- read_csv('~/Downloads/InVivoRNAseq    strongBAT RNA-seq Plotsstrong      strongWAT RNA-seq Plotsstrong (1).csv') %>% group_by(ONTOLOGY) %>% mutate(rank = rank(p.adjust))
+
+goDF <- goDF %>% as_tibble() %>% group_by(ONTOLOGY) %>% mutate(rank = rank(p.adjust)) %>%
+  rowwise() %>% dplyr::mutate(zscore = zScore(geneID, subsetFC, universe))
+
+ggplot(filter(goDF, !ONTOLOGY == 'CC', p.adjust < 0.05), 
+       aes(x = rank, y = -log10(p.adjust), size = Count)) + 
+  geom_point(alpha= 0.25) + facet_wrap(~ONTOLOGY, scales = 'free', ncol = 1) +
+  geom_text_repel(data = filter(goDF, rank <= 20, !ONTOLOGY == 'CC'),
+                    aes(label = Description), colour = 'black', size = 3, force = 10) +
+  xlim(0,20) + ylim(3,NA)
+
+ggplot(filter(goDF, !ONTOLOGY == 'CC'), 
+       aes(x = zscore, y = -log10(p.adjust), size = Count)) + 
+  geom_point(alpha= 0.25) + facet_wrap(~ONTOLOGY, scales = 'free', ncol = 1) +
+  geom_text_repel(data = filter(goDF, rank <= 20, !ONTOLOGY == 'CC'),
+                    aes(label = Description), colour = 'black', size = 3, force = 10)
+
+```
+
+
+## Heatmap comparisons
+```{r}
+# Heatmap of intersect
+hits = filter(so_wat_dat, target_id %in% hitIntersect)
+hits_dat = so_wat$obs_norm %>% dplyr::select(target_id, sample, est_counts) %>% 
+  spread(key = sample, value = est_counts)
+genes = hits_dat$target_id
+#genes = hits[match(genes,hits$target_id),'external_transcript_name']
+hits_dat = as.matrix(hits_dat[,2:ncol(hits_dat)])
+rownames(hits_dat) = genes
+
+zeros = which(hits_dat <= 0, arr.ind = T)
+for(i in 1:nrow(zeros)){
+  hits_dat[zeros[i,1], zeros[i,2]] = 1
+}
+
+# Filter for conditions of interest
+annotation = dplyr::select(s2cX, sample, day, treatment, depot) %>% 
+  #filter(Treatment %in% c('Control_na','Cort_injection', 'PBS_injection')) %>% 
+  mutate(day = as.numeric(day)) %>% as.data.frame()
+
+annotation = annotation[order(annotation$treatment),]
+annotation_cols = list(ID = c(Control_na = '#bababa', Cort_injection = '#BF19C2', Cort_pellet = '#2CABCE',
+                              Placebo_injection = '#2C9140', Placebo_pellet = '#AD2E24'))
+
+cols <- colorRampPalette(brewer.pal(5, "Set1"))
+mycolors <- cols(length(unique(annotation$Treatment)))
+names(mycolors) <- unique(annotation$Treatment)
+mycolors <- list(mycolors = mycolors)
+
+
+hits_dat <- hits_dat[,colnames(hits_dat) %in% annotation$sample]
+# Heatmap of Differentially Expressed Genes
+hits_dat = t(apply(hits_dat, 1, function(x) x / mean(x)))
+
+
+rownames(annotation) <- annotation$sample
+annotation <- dplyr::select(annotation, -sample)
+
+mypal = rev(colorRampPalette(brewer.pal(11, "RdBu"))(n=200))
+
+# Intersect
+pheatmap(log2(hits_dat[rownames(hits_dat) %in% hitIntersect,]), 
+         breaks = seq(-2,2,4/(length(mypal))), 
+         color = mypal, 
+         show_rownames = F,
+         show_colnames = F,
+         annotation_col = annotation,
+         #annotation_colors = annotation_cols$ID,
+         #cutree_cols = 2,
+         clustering_distance_cols = 'correlation',
+         border_color = F
+         )
+
+# LRT only
+lrt_only <- uniqueLRT[(!uniqueLRT %in% uniqueFC)]
+pheatmap(log2(hits_dat[rownames(hits_dat) %in% lrt_only,]), 
+         breaks = seq(-2,2,4/(length(mypal))), 
+         color = mypal, 
+         show_rownames = F,
+         show_colnames = F,
+         annotation_col = annotation,
+         #annotation_colors = annotation_cols$ID,
+         #cutree_cols = 2,
+         clustering_distance_cols = 'correlation',
+         border_color = F
+         )
+
+# FC only
+fc_only <- uniqueFC[(!uniqueFC %in% uniqueLRT)]
+pheatmap(log2(hits_dat[rownames(hits_dat) %in% fc_only,]), 
+         breaks = seq(-2,2,4/(length(mypal))), 
+         color = mypal, 
+         show_rownames = F,
+         show_colnames = F,
+         annotation_col = annotation,
+         #annotation_colors = annotation_cols$ID,
+         #cutree_cols = 2,
+         clustering_distance_cols = 'correlation',
+         border_color = F
+         )
+```
+
+
+## TF Motifs WAT up vs down regulated genes
+```{r}
+# Export data for oPOSSUM analysis
+joined_results %>% filter(lrt_ln_qval < 0.05, fc < 1/1.5) %>% 
+  filter(!duplicated(ens_gene)) %>% 
+  write_csv('~/Downloads/down_regulated.csv')
+
+joined_results %>% filter(lrt_ln_qval < 0.05, fc > 2) %>% 
+  filter(!duplicated(ens_gene)) %>% 
+  write_csv('~/Downloads/up_regulated.csv')
+
+# Load in oPOSSUM results
+tf_up <- read_xlsx('~/Downloads/tf_motifs_up_regulated_wat.xlsx') %>% dplyr::select(TF, `Z-score`) %>%
+  dplyr::rename(zscore_up = `Z-score`)
+
+tf_down <- read_xlsx('~/Downloads/tf_motifs_down_regulated_wat.xlsx') %>% dplyr::select(TF, `Z-score`) %>%
+  dplyr::rename(zscore_down = `Z-score`)
+
+tf_all <- full_join(tf_up, tf_down, by = 'TF') %>% mutate(TF = toupper(TF))
+
+ggplot(tf_all, aes(x = zscore_up, y = zscore_down)) + geom_point() + geom_vline(xintercept = 0) +
+  geom_hline(yintercept = 0) + 
+  geom_text_repel(data = filter(tf_all, zscore_up > 10, zscore_down < -10),
+                    aes(label = TF), colour = 'black', size = 3, force = 10) +
+  geom_text_repel(data = filter(tf_all, zscore_down > 10, zscore_up < -5),
+                    aes(label = TF), colour = 'black', size = 3, force = 10)
+
+tf_all <- joined_results %>% dplyr::select(ext_gene, fc, lrt_ln_qval) %>%
+  dplyr::rename(TF = ext_gene) %>%
+  mutate(direction = ifelse(lrt_ln_qval < 0.05 & fc > 1.5,
+                            'Up',
+                            ifelse(lrt_ln_qval < 0.05 & fc < 1/1.5,
+                                   'Down',
+                                   NA)),
+         TF = toupper(TF)) %>%
+  filter(!is.na(direction)) %>%
+  right_join(tf_all, 'TF') %>% filter(!duplicated(TF))
+
+ggplot(tf_all, aes(x = zscore_up, y = zscore_down, color = direction)) + 
+  geom_vline(xintercept = 0, alpha = 0.5) + geom_hline(yintercept = 0, alpha = 0.5) + 
+  geom_point(size = 4, alpha = 0.5, stroke = 0) + 
+  geom_text_repel(data = filter(tf_all, zscore_up > 10, zscore_down < -5),
+                    aes(label = TF, color = direction), size = 3, force = 10) +
+  geom_text_repel(data = filter(tf_all, zscore_down > 10, zscore_up < -5),
+                    aes(label = TF, color = direction), size = 3, force = 10) +
+  theme_bw()
+
+```
+
