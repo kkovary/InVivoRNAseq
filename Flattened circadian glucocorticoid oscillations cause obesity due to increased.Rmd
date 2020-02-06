@@ -174,7 +174,7 @@ sleuth_save(so_bat, '~/Documents/GitHub/ShinyApps/InVivoRNAseq/data/so_bat')
 This is the meat of the analysis and is based on what I showed in lab meeting this week. The steps are roughly:
 
 1. Fit likelihood ratio test using a full model (treatment and lane) and compare that to a reduced model (lane only).
-  + this generates a q-value (FDR adjusted p-value) that is used down stream for significance testing
+    + this generates a q-value (FDR adjusted p-value) that is used down stream for significance testing
 2. Fit a Wald test comparing Cort vs Placebo pellet data. I am not actually using this for downstream analysis, but I was initially interested in it since it creates a beta value that is comparable to a fold change value and wanted it around in case it was useful. It turned out to correlate strongly with fold change (as it should) though the dynamic range was lower and tended to scrunch things up.
 3. Calculate a fold change value between Cort and Placebo for downstream analysis
 4. Combine all of these values together into a single data structure
@@ -479,12 +479,15 @@ joined_wat_results <-
              'Circadian rhythm',
              NA)
     )
-  ))
+  )) %>%
+  mutate(Category = factor(Category, 
+                           levels = c('Glycolytic enzymes and regulators',
+                                      'Lipid metabolism',
+                                      'Circadian rhythm')))
 
 ggplot(filter(joined_wat_results, !is.na(Direction)), 
        aes(x = log2(fc), 
-           y = -log10(lrt_qval), 
-           color = Category)) + 
+           y = -log10(lrt_qval))) + 
   geom_point(alpha = 0.25, 
              stroke = 0,
              data = filter(joined_wat_results, 
@@ -495,17 +498,18 @@ ggplot(filter(joined_wat_results, !is.na(Direction)),
              stroke = 0, 
              data = filter(joined_wat_results, 
                            lrt_qval < 0.05, 
-                           !is.na(Category))) +
+                           !is.na(Category)),
+             aes(color = Category)) +
   geom_hline(yintercept = -log10(0.05), 
              color = 'red', 
              linetype = 'dashed') + 
-  geom_text_repel(data = filter(joined_wat_results, 
+  geom_label_repel(data = filter(joined_wat_results, 
                                 !is.na(Category),
                                 lrt_qval < 0.05),
                     aes(label = external_transcript_name, 
                         color = Category), 
-                  size = 3, 
-                  force = 2) +
+                  size = 2, 
+                  force = 20) +
   xlim(-7,7) +
   #scale_color_manual(values = c('#4393c3','#878787','#d6604d')) +
   xlab('log2(fold change)') + 
@@ -542,13 +546,16 @@ joined_wat_gene_results <-
       ifelse(target_id %in% circ_rhy,
              'Circadian rhythm',
              NA)
-    )))
+    ))) %>%
+  mutate(Category = factor(Category, 
+                           levels = c('Glycolytic enzymes and regulators',
+                                      'Lipid metabolism',
+                                      'Circadian rhythm')))
 
 joined_wat_gene_results %>% filter(!is.na(Direction)) %>%
 ggplot(., 
        aes(x = log2(fc), 
-           y = -log10(lrt_qval), 
-           color = Category)) + 
+           y = -log10(lrt_qval))) + 
   geom_point(alpha = 0.25, 
              stroke = 0,
              data = filter(joined_wat_gene_results, 
@@ -559,17 +566,18 @@ ggplot(.,
              stroke = 0, 
              data = filter(joined_wat_gene_results, 
                            lrt_qval < 0.05, 
-                           !is.na(Category))) +
+                           !is.na(Category)),
+             aes(color = Category)) +
   geom_hline(yintercept = -log10(0.05), 
              color = 'red', 
              linetype = 'dashed') + 
-  geom_text_repel(data = filter(joined_wat_gene_results, 
+  geom_label_repel(data = filter(joined_wat_gene_results, 
                                 !is.na(Category),
                                 lrt_qval < 0.05),
                     aes(label = target_id, 
                         color = Category), 
-                  size = 3, 
-                  force = 2) +
+                  size = 2, 
+                  force = 20) +
   xlim(-7,7) +
   #scale_color_manual(values = c('#4393c3','#878787','#d6604d')) +
   xlab('log2(fold change)') + 
@@ -607,13 +615,16 @@ joined_bat_results <-
              'Circadian rhythm',
              NA)
     )
-  ))
+  )) %>%
+  mutate(Category = factor(Category, 
+                           levels = c('Glycolytic enzymes and regulators',
+                                      'Lipid metabolism',
+                                      'Circadian rhythm')))
   
 
 ggplot(filter(joined_bat_results, !is.na(Direction)), 
        aes(x = log2(fc), 
-           y = -log10(lrt_qval), 
-           color = Category)) + 
+           y = -log10(lrt_qval))) + 
   geom_point(alpha = 0.25, 
              stroke = 0,
              data = filter(joined_bat_results, 
@@ -624,17 +635,18 @@ ggplot(filter(joined_bat_results, !is.na(Direction)),
              stroke = 0, 
              data = filter(joined_bat_results, 
                            lrt_qval < 0.05, 
-                           !is.na(Category))) +
+                           !is.na(Category)),
+             aes(color = Category)) +
   geom_hline(yintercept = -log10(0.05), 
              color = 'red', 
              linetype = 'dashed') + 
-  geom_text_repel(data = filter(joined_bat_results, 
+  geom_label_repel(data = filter(joined_bat_results, 
                                 !is.na(Category),
                                 lrt_qval < 0.05),
                     aes(label = external_transcript_name, 
                         color = Category), 
-                  size = 3, 
-                  force = 2) +
+                  size = 2, 
+                  force = 20) +
   xlim(-7,7) +
   #scale_color_manual(values = c('#4393c3','#878787','#d6604d')) +
   xlab('log2(fold change)') + 
@@ -671,13 +683,16 @@ joined_bat_gene_results <-
       ifelse(target_id %in% circ_rhy,
              'Circadian rhythm',
              NA)
-    )))
+    ))) %>%
+  mutate(Category = factor(Category, 
+                           levels = c('Glycolytic enzymes and regulators',
+                                      'Lipid metabolism',
+                                      'Circadian rhythm')))
 
 joined_bat_gene_results %>% filter(!is.na(Direction)) %>%
 ggplot(., 
        aes(x = log2(fc), 
-           y = -log10(lrt_qval), 
-           color = Category)) + 
+           y = -log10(lrt_qval))) + 
   geom_point(alpha = 0.25, 
              stroke = 0,
              data = filter(joined_bat_gene_results, 
@@ -688,17 +703,18 @@ ggplot(.,
              stroke = 0, 
              data = filter(joined_bat_gene_results, 
                            lrt_qval < 0.05, 
-                           !is.na(Category))) +
+                           !is.na(Category)),
+             aes(color = Category)) +
   geom_hline(yintercept = -log10(0.05), 
              color = 'red', 
              linetype = 'dashed') + 
-  geom_text_repel(data = filter(joined_bat_gene_results, 
+  geom_label_repel(data = filter(joined_bat_gene_results, 
                                 !is.na(Category),
                                 lrt_qval < 0.05),
                     aes(label = target_id, 
                         color = Category), 
-                  size = 3, 
-                  force = 2) +
+                  size = 2, 
+                  force = 20) +
   xlim(-7,7) +
   #scale_color_manual(values = c('#4393c3','#878787','#d6604d')) +
   xlab('log2(fold change)') + 
@@ -723,7 +739,11 @@ In all of these plots, the genes that Stefan highlighted figure 6D shown on the 
 ###################
 
 joined_wat_results %>% filter(!is.na(Category), lrt_qval < 0.05) %>%
-  mutate(ext_gene = factor(ext_gene, levels = c(gly_enz,lipid_met,circ_rhy))) %>%
+  mutate(ext_gene = factor(ext_gene, levels = c(gly_enz,lipid_met,circ_rhy)),
+         Category = factor(Category, 
+                           levels = c('Glycolytic enzymes and regulators',
+                                      'Lipid metabolism',
+                                      'Circadian rhythm'))) %>%
   ggplot(., aes(x = external_transcript_name, y = log2(fc), fill = Category)) +
   geom_bar(stat = 'identity') + 
   facet_wrap(~ext_gene, 
@@ -772,7 +792,11 @@ joined_wat_gene_results %>% filter(!is.na(Category), lrt_qval < 0.05) %>%
 ##################
 
 joined_bat_results %>% filter(!is.na(Category), lrt_qval < 0.05) %>%
-  mutate(ext_gene = factor(ext_gene, levels = c(gly_enz,lipid_met,circ_rhy))) %>%
+  mutate(ext_gene = factor(ext_gene, levels = c(gly_enz,lipid_met,circ_rhy)),
+         Category = factor(Category, 
+                           levels = c('Glycolytic enzymes and regulators',
+                                      'Lipid metabolism',
+                                      'Circadian rhythm'))) %>%
   ggplot(., aes(x = external_transcript_name, y = log2(fc), fill = Category)) +
   geom_bar(stat = 'identity') + 
   facet_wrap(~ext_gene, 
